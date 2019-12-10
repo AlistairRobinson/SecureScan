@@ -2,3 +2,68 @@ theory NewProtocol
 begin
 
 builtins: hashing, asymmetric-encryption
+
+rule Register_PK:
+    [ Fr(~A_SK) ]
+  -->
+    [ !Sk($A, ~A_SK), !Pk($A, pk(~A_SK)) ]
+/*
+rule Register_ST_PK:
+    [ Fr(~ST_SK) ]
+  -->
+    [ !Sk($ST, ~ST_SK), !Pk($ST, pk(~ST_SK)) ]
+*/
+rule Get_PK:
+    [ !Pk(A, A_PK) ]
+  -->
+    [ Out(A_PK) ]
+
+rule Reveal_SK:
+    [ !Sk(A, A_SK) ]
+  --[ Compromised(A) ]->
+    [ Out(A_SK) ]
+/*
+rule Reveal_ST_SK:
+    [ !Sk(ST, ST_SK) ]
+  --[ CompromisedST(ST_SK) ]->
+    [ Out(ST_SK) ]
+*/
+rule Station_1:
+    [ Fr(~ST_SK)
+    , !Sk($ST, ~ST_SK)
+    , !Pk($ST, pk(~ST_SK))
+    , Fr(~N)
+    , !Pk($AP, AP_PK)
+    ]
+  --[ ProbeRequest($AP, aenc( < pk( ~ST_SK ), ~N >, AP_PK )) ]->
+    [ Station_1( $AP, ~ST_SK, ~N )
+    , Out( aenc( < pk( ~ST_SK ), ~N >, AP_PK ) )
+    ]
+
+rule Station_2:
+    [ Station_1(AP, ST_SK, N)
+    , In( aenc( N, ST_SK ) )
+    ]
+  --[ Complete(AP, ST_SK) ]->
+    []
+
+rule Access_Point:
+    let msg = adec(probe_request, ~AP_SK)
+    in
+    [ !Sk($AP, ~AP_SK)
+    , In( probe_request )
+    ]
+  --[ ProbeResponse($AP, aenc(snd(msg), fst(msg))) ]->
+    [ Out( aenc(snd(msg), fst(msg)) ) ]
+
+lemma Station_key_privacy:
+  "
+    not(
+        Ex AP ST_SK #i #j .
+            Complete(AP, ST_SK) @ #i
+            & K(ST_SK) @ #j
+        & not(Ex #r. Compromised(ST_SK) @ r)
+    )
+  "
+
+end
