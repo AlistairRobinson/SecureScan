@@ -1,0 +1,4 @@
+theory NewProtocol
+begin
+
+builtins: hashing, asymmetric-encryption
