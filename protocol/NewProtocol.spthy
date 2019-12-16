@@ -1,69 +1,90 @@
 theory NewProtocol
 begin
 
-builtins: hashing, asymmetric-encryption
+builtins: hashing, asymmetric-encryption, signing
 
 rule Register_PK:
-    [ Fr(~A_SK) ]
+    [ Fr(~SK) ]
   -->
-    [ !Sk($A, ~A_SK), !Pk($A, pk(~A_SK)) ]
-/*
-rule Register_ST_PK:
-    [ Fr(~ST_SK) ]
-  -->
-    [ !Sk($ST, ~ST_SK), !Pk($ST, pk(~ST_SK)) ]
-*/
+    [ !Sk($A, ~SK), !Pk($A, pk(~SK)) ]
+
 rule Get_PK:
-    [ !Pk(A, A_PK) ]
+    [ !Pk(A, PK) ]
   -->
-    [ Out(A_PK) ]
+    [ Out(PK) ]
 
 rule Reveal_SK:
-    [ !Sk(A, A_SK) ]
-  --[ Compromised(A) ]->
-    [ Out(A_SK) ]
-/*
-rule Reveal_ST_SK:
-    [ !Sk(ST, ST_SK) ]
-  --[ CompromisedST(ST_SK) ]->
-    [ Out(ST_SK) ]
-*/
+    [ !Sk(A, SK) ]
+  --[ SKReveal(A) ]->
+    [ Out(SK) ]
+
 rule Station_1:
     [ Fr(~ST_SK)
-    , !Sk($ST, ~ST_SK)
-    , !Pk($ST, pk(~ST_SK))
-    , Fr(~N)
     , !Pk($AP, AP_PK)
     ]
-  --[ ProbeRequest($AP, aenc( < pk( ~ST_SK ), ~N >, AP_PK )) ]->
-    [ Station_1( $AP, ~ST_SK, ~N )
-    , Out( aenc( < pk( ~ST_SK ), ~N >, AP_PK ) )
+  -->
+    [ Station_1($AP, ~ST_SK, AP_PK)
+    , Out(aenc(pk(~ST_SK), AP_PK))
     ]
 
 rule Station_2:
-    [ Station_1(AP, ST_SK, N)
-    , In( aenc( N, ST_SK ) )
+    let message = adec(response, ST_SK) in
+    [ Station_1(AP, ST_SK, AP_PK)
+    , In(response)
     ]
-  --[ Complete(AP, ST_SK) ]->
+  --[ Handshake(AP, ST_SK)
+    , Signature(AP, ST_SK,
+      verify(message, pk(ST_SK), AP_PK)) ]->
     []
 
 rule Access_Point:
-    let msg = adec(probe_request, ~AP_SK)
-    in
+    let message = adec(request, ~AP_SK) in
     [ !Sk($AP, ~AP_SK)
-    , In( probe_request )
+    , In(request)
     ]
-  --[ ProbeResponse($AP, aenc(snd(msg), fst(msg))) ]->
-    [ Out( aenc(snd(msg), fst(msg)) ) ]
+  --[ ProbeResponse($AP, message) ]->
+    [ Out( aenc(sign(message, ~AP_SK), message) ) ]
 
-lemma Station_key_privacy:
+lemma Station_Key_Secrecy:
   "
     not(
-        Ex AP ST_SK #i #j .
-            Complete(AP, ST_SK) @ #i
-            & K(ST_SK) @ #j
-        & not(Ex #r. Compromised(ST_SK) @ r)
+      Ex S k #i #j #k.
+        Handshake(S, k) @ #i
+        & K(k) @ #j
+        & Signature(S, k, true) @ #k
+      & not(Ex #r. SKReveal(S) @ r)
     )
+  "
+
+lemma Station_Handshake:
+  "
+    ( All S k #i #j. Handshake(S, k) @ #i & Signature(S, k, true) @ #j
+       ==>
+       ( (Ex #a. ProbeResponse(S, pk(k)) @ a)
+       | (Ex #r. SKReveal(S) @ r & r < i)
+       )
+    )
+  "
+
+lemma Station_Handshake_Injectivity:
+  "
+    ( All S k #i #j. Handshake(S, k) @ #i  & Signature(S, k, true) @ #j
+       ==>
+       ( (Ex #a. ProbeResponse(S, pk(k)) @ a
+           & (All #j. Handshake(S, k) @ #j ==> #i = #j)
+       )
+       | (Ex #r. SKReveal(S) @ r & r < i)
+       )
+    )
+  "
+
+lemma Station_Access:
+  exists-trace
+  " Ex S k #i #j #k.
+        Handshake(S, k) @ #i
+        & ProbeResponse(S, pk(k)) @ #j
+        & Signature(S, k, true) @ #k
+      & not(Ex #r. SKReveal(S) @ r)
   "
 
 end
