@@ -1,0 +1,165 @@
+theory OldProtocol
+begin
+
+builtins: hashing, asymmetric-encryption, signing
+
+/*  Register_PK
+    A rule which defines the process by which an actor `$A` can be assigned
+    and associated with a new secret key `~SK` public key `pk(~SK)` pair
+*/
+rule Register_PK:
+    /*  Precondition
+        A new secret key `~SK` must exist
+    */
+    [ Fr(~SK) ]
+  -->
+    /*  Postcondition
+        The actor `$A` is associated with the secret key `~SK` via the `!Sk`
+        relation and the public key `pk(~SK)` via the `!Pk` relation
+    */
+    [ !Sk($A, ~SK), !Pk($A, pk(~SK)) ]
+
+/*  Get_PK
+    A rule which defines the process by which the public key `PK` of an actor
+    `A` may be revealed
+*/
+rule Get_PK:
+    /*  Precondition
+        The actor `A` must have an associated public key `PK` via the `!Pk`
+        relation
+    */
+    [ !Pk(A, PK) ]
+  -->
+    /*  Postcondition
+        The actor's public key is revealed to the network
+    */
+    [ Out(PK) ]
+
+/*  Reveal_SK
+    A rule which defines the process by which the secret key `SK` of an actor
+    `A` may be revealed
+*/
+rule Reveal_SK:
+    /*  Precondition
+        The actor `A` must have an associated secret key `SK` via the `!Sk`
+        relation
+    */
+    [ !Sk(A, SK) ]
+    /*  Action fact
+        If this rule is utilised by an actor in the model, record that the
+        secret key of the actor `A` was revealed using this rule using the
+        `SKReveal` relation
+    */
+  --[ SKReveal(A) ]->
+    /*  Postcondition
+        The actor's secret key `SK` is revealed to the network
+    */
+    [ Out(SK) ]
+
+/*  Station_1
+    A rule which defines the initial behaviour of an honest station attempting
+    to establish a connection with an access point
+*/
+rule Station_1:
+    /*  Precondition
+        The access point `$AP` must have an associated public key `AP_PK`
+    */
+    [ !Pk($AP, AP_PK)
+    ]
+  -->
+    /*  Postcondition
+        The state of the station, including the targeted access point `$AP` and
+        the access point's public key `AP_PK`, are recorded in the Station_1
+        relation for the next stage of the protocol. The station broadcasts a
+        probe request containing the AP's public key `AP_PK`
+    */
+    [ Station_1($AP, AP_PK)
+    , Out(AP_PK)
+    ]
+
+/*  Station_2
+    A rule which defines the behaviour of an honest station attempting to
+    establish a connection with an access point after receiving a response
+*/
+rule Station_2:
+    /*  Precondition
+        The station must have an existing state enforced by the `Station_1`
+        relation above (i.e. it must have broadcast a probe request) and must
+        have received a probe response `AP_PK` from an access point
+    */
+    [ Station_1(AP, AP_PK)
+    , In(AP_PK)
+    ]
+    /*  Action fact
+        If the preconditions of this rule are satisfied, record that a
+        handshake was successfully performed with the access point `AP` with
+        the station's public key `AP_PK` in the `Handshake` relation.
+    */
+  --[ Handshake(AP, AP_PK)
+    ]->
+    []
+
+/*  Access_Point
+    A rule which defines the behaviour of an honest access point after
+    receiving a probe request from a station
+*/
+rule Access_Point:
+    /*  Precondition
+        The access point `$AP` must have an associated public key `AP_PK` and
+        must have received a probe request containing its public key
+    */
+    [ !Pk($AP, AP_PK)
+    , In(AP_PK)
+    ]
+    /*  Action fact
+        If the preconditions of this rule are satisfied, record that a probe
+        response was sent from the access point `$AP` along with the station's
+        public key `AP_PK`
+    */
+  --[ ProbeResponse($AP, AP_PK) ]->
+    /*  Postcondition
+        The access point broadcasts a probe response containing its public key
+        `AP_PK` as confirmation of a successful handshake
+    */
+    [ Out(AP_PK) ]
+
+/*  Station_Privacy
+    A lemma which enforces that an adversary cannot know the identity of the
+    access point which a station performs a handshake with
+*/
+lemma Station_Privacy:
+  "
+    not(                        // it is not possible
+      Ex S k #i #j.             // for any station `S` and a public key `k`
+        Handshake(S, k) @ #i    // to perform a successful handshake
+        & K(k) @ #j             // where the adversary knows `k`
+    )
+  "
+
+/*  Station_Handshake
+    A lemma which enforces that a station `S` cannot perform a handshake with
+    an access point without having interacted with an honest access point,
+    resulting in a probe response
+*/
+lemma Station_Handshake:
+  "
+    ( All S k #i. Handshake(S, k) @ #i      // For all completed handshakes
+       ==>                                  // it follows that...
+       ( (Ex #a. ProbeResponse(S, k) @ a)   // a probe request must exist
+       )
+    )
+  "
+
+/*  Station_Access
+    A lemma that enforces that the protocol does not vacuously satisfy
+    the above lemmas by enforcing that a station must be able to perform
+    a handshake with an access point with a valid probe response
+*/
+lemma Station_Access:
+  exists-trace                          // the protocol must facilitate
+  " Ex S k #i #j.                       // for any station and key
+        Handshake(S, k) @ #i            // a successful handshake for `S`
+        & ProbeResponse(S, k) @ #j      // with a valid probe response
+  "
+
+end
