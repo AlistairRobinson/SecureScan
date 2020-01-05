@@ -1,3 +1,4 @@
 *./__pycache__/
 *.aes
 *.pyc
+*.png
