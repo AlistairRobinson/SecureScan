@@ -4,7 +4,7 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey.RSA import _RSAobj
 from Crypto.PublicKey import RSA
 from typing import List
-import os, binascii
+import os, binascii, json
 
 def get_hex(i:int) -> str:
     return binascii.b2a_hex(os.urandom(i)).decode('utf-8')
@@ -25,13 +25,17 @@ class AccessPoint:
         msg = [self.key.decrypt(i) for i in request.contents]
         p_text = bytes([b for s in msg for b in s])
         st_pk = RSA.importKey(p_text)
-        signature = bytes(str(self.key.sign(SHA256.new(p_text).digest(), 32)[0]), 'utf-8')
-        c_text = [st_pk.encrypt(i, 32) for i in fragment(signature, 80)]
+        message = bytes(json.dumps({
+            "ssid": self.ssid,
+            "signature": str(self.key.sign(SHA256.new(p_text).digest(), 32)[0])
+        }), 'utf-8')
+        c_text = [st_pk.encrypt(i, 32) for i in fragment(message, 80)]
         return Frame(FrameType['ProbeResponse'],
                      self.mac_addr, "*", c_text)
 
-    def __init__(self):
+    def __init__(self, ssid:str):
         self.mac_addr = get_hex(6)
+        self.ssid = ssid
         self.key = get_key()
         assert self.key.can_encrypt()
         assert self.key.has_private()
@@ -57,9 +61,10 @@ class Station:
 
     def verify_probe_response(self, response:Frame) -> bool:
         msg = [self.key.decrypt(i) for i in response.contents]
-        p_text = (int(bytes([b for s in msg for b in s]).decode('utf-8')), None)
+        p_text = json.loads(bytes([b for s in msg for b in s]).decode('utf-8'))
+        signature = (int(p_text['signature']), None)
         challenge = SHA256.new(self.key.publickey().exportKey()).digest()
-        return self.ap_pk.verify(challenge, p_text)
+        return self.ap_pk.verify(challenge, signature)
 
     def __init__(self):
         self.mac_addr = get_hex(6)

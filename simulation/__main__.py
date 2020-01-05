@@ -1,7 +1,7 @@
 from simulation.actors import Station, AccessPoint
 
 s = Station()
-a = AccessPoint()
+a = AccessPoint("Example")
 
 beacon = a.send_beacon()
 print(beacon)
