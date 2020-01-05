@@ -41,6 +41,12 @@ class AccessPoint:
         assert self.key.has_private()
         assert self.key.can_sign()
 
+    def __str__(self):
+        return "Access Point: \t" + self.ssid + "\n" \
+        "Global MAC address: \t" + self.mac_addr + "\n" \
+        "Public key: \n" + self.key.publickey().exportKey().decode('utf-8') + "\n" \
+        "Private key: \n" + self.key.exportKey().decode('utf-8')
+
 class Station:
 
     def refresh(self):
@@ -69,3 +75,10 @@ class Station:
     def __init__(self):
         self.mac_addr = get_hex(6)
         self.refresh()
+
+    def __str__(self):
+        return "Station: \t\n" \
+        "Global MAC address: \t" + self.mac_addr + "\n" \
+        "Random MAC address: \t" + self.rmac_addr + "\n" \
+        "Public key: \n" + self.key.publickey().exportKey().decode('utf-8') + "\n" \
+        "Private key: \n" + self.key.exportKey().decode('utf-8')
