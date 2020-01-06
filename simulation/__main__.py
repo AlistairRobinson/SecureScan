@@ -49,6 +49,10 @@ for i in range(0, n):
     history.append(request)
     history.append(response)
 
+if v:
+    for h in history:
+        print(h)
+
 dist = [[] for i in range(0, 10000)]
 
 l = 0
@@ -65,7 +69,7 @@ for f in history:
         if f != h and f.type == h.type:
             assert f.source != h.source
             assert f.contents != h.contents
-            d = 0 # Levenshtein.distance(str(f.contents), str(h.contents))
+            d = Levenshtein.distance(str(f.contents), str(h.contents))
             if d < m or m == 0:
                 m = d
             l += d
