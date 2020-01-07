@@ -53,10 +53,15 @@ history = []
 for i in range(0, n):
     st = random.choice(stations)
     ap = random.choice(aps)
+    valid = bool(random.getrandbits(1))
+    if valid:
+        st.saved.add((ap.ssid, ap.key.publickey().exportKey()))
     beacon = ap.send_beacon()
     request = st.send_probe_request(beacon)
     response = ap.send_probe_response(request)
-    assert st.verify_probe_response(response)
+    assert st.verify_probe_response(response) == valid
+    if valid:
+        st.saved.remove((ap.ssid, ap.key.publickey().exportKey()))
     history.append(beacon)
     history.append(request)
     history.append(response)

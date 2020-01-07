@@ -70,10 +70,13 @@ class Station:
         p_text = json.loads(bytes([b for s in msg for b in s]).decode('utf-8'))
         signature = (int(p_text['signature']), None)
         challenge = SHA256.new(self.key.publickey().exportKey()).digest()
+        if (p_text['ssid'], self.ap_pk.exportKey()) not in self.saved:
+            return False
         return self.ap_pk.verify(challenge, signature)
 
     def __init__(self):
         self.mac_addr = get_hex(6)
+        self.saved = set()
         self.refresh()
 
     def __str__(self):
