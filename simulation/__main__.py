@@ -7,11 +7,14 @@ import numpy as np
 import argparse, random, Levenshtein
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-v", help = "operates simulation in verbose mode", action = 'store_true')
-parser.add_argument("-p", help = "plots data to a given file")
+parser.add_argument("-v", help = "operate simulation in verbose mode", action = 'store_true')
+parser.add_argument("-p", help = "plot data to a given file")
 parser.add_argument("-n", help = "the number of iterations to perform")
 parser.add_argument("-s", help = "the number of stations to simulate")
 parser.add_argument("-a", help = "the number of access points to simulate")
+parser.add_argument("--levenshtein", help = "calculate Levenshtein distance in simulated data", action = 'store_true')
+parser.add_argument("--entropy", help = "calculate Shannon entropy in simulated data", action = 'store_true')
+parser.add_argument("--all", help = "perform all possible analysis on simulated data", action = 'store_true')
 args = parser.parse_args()
 
 n = 100
@@ -19,6 +22,8 @@ s = 1
 a = 1
 p = ""
 v = False
+levenshtein_set = False
+entropy_set = False
 
 if args.v:
     v = True
@@ -30,6 +35,13 @@ if args.s:
     s = int(args.s)
 if args.a:
     a = int(args.a)
+if args.levenshtein:
+    levenshtein_set = True
+if args.entropy:
+    entropy_set = True
+if args.all:
+    levenshtein_set = True
+    entropy_set = True
 
 print("Beginning simulation with %d stations, %d access points, %d repetitions" % (s, a, n))
 
@@ -58,34 +70,36 @@ for f in history:
     i = 0
     if f.type != FrameType['ProbeRequest']:
         continue
-    for c in str(f.contents):
-        dist[i].append(c)
-        i += 1
+    if entropy_set:
+        for c in str(f.contents):
+            dist[i].append(c)
+            i += 1
     for h in history:
         if f != h and f.type == h.type:
             assert f.source != h.source
             assert f.contents != h.contents
-            d = 0 # Levenshtein.distance(str(f.contents), str(h.contents))
-            if d < m or m == 0:
-                m = d
-            l += d
-            n += 1
+            if levenshtein_set:
+                d = Levenshtein.distance(str(f.contents), str(h.contents))
+                if d < m or m == 0:
+                    m = d
+                l += d
+                n += 1
 
-entropies = []
-
-for d in dist:
-    if d == []:
-        continue
-    values, counts = np.unique(d, return_counts=True)
-    entropies.append(entropy(counts))
-
-plt.plot(entropies)
-plt.show()
-
-if p != "":
-    plt.savefig(p)
+if entropy_set:
+    entropies = []
+    for d in dist:
+        if d == []:
+            continue
+        values, counts = np.unique(d, return_counts=True)
+        entropies.append(entropy(counts))
+    plt.plot(entropies)
+    plt.show()
+    if p != "":
+        plt.savefig(p)
 
 print("All simulations completed, no anomalies")
-print("Average Levenshtein distance: \t%d" % (l / n))
-print("Minimum Levenshtein distance: \t%d" % m)
-print("Total entropy: \t\t\t%d" % sum(entropies))
+if levenshtein_set:
+    print("Average Levenshtein distance: \t%d" % (l / n))
+    print("Minimum Levenshtein distance: \t%d" % m)
+if entropy_set:
+    print("Total entropy: \t\t\t%d" % sum(entropies))
