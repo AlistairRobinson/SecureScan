@@ -3,9 +3,8 @@ from Crypto import Random
 from Crypto.Hash import SHA256
 from Crypto.PublicKey.RSA import _RSAobj
 from Crypto.PublicKey import RSA
-from time import sleep
 from typing import List
-import os, binascii, json, random
+import os, binascii, json, random, time
 
 def get_hex(i:int) -> str:
     return binascii.b2a_hex(os.urandom(i)).decode('utf-8')
@@ -58,26 +57,41 @@ class Station:
         assert self.key.can_sign()
 
     def send_probe_request(self, beacon:Frame) -> Frame:
-        sleep(random.randint(1, 100) / 1000)
+        if beacon.source in self.memory:
+            return None
+        time.sleep(random.randint(1, 100) / 1000)
         self.refresh()
-        self.ap_pk = RSA.importKey(beacon.contents)
+        ap_pk = RSA.importKey(beacon.contents)
+        self.memory[beacon.source] = {
+            'ap_pk': ap_pk,
+            'st_sk': self.key,
+            'time': time.time()
+        }
         msg = self.key.publickey().exportKey()
         p_text = fragment(msg, 80)
-        c_text = [self.ap_pk.encrypt(i, 32) for i in p_text]
+        c_text = [ap_pk.encrypt(i, 32) for i in p_text]
         return Frame(FrameType['ProbeRequest'],
                      self.rmac_addr, "*", c_text)
 
     def verify_probe_response(self, response:Frame) -> bool:
-        msg = [self.key.decrypt(i) for i in response.contents]
+        if response.source not in self.memory:
+            return False
+        if time.time() - self.memory[response.source]['time'] > 1:
+            return False
+        ap_pk = self.memory[response.source]['ap_pk']
+        st_sk = self.memory[response.source]['st_sk']
+        self.memory.pop(response.source)
+        msg = [st_sk.decrypt(i) for i in response.contents]
         p_text = json.loads(bytes([b for s in msg for b in s]).decode('utf-8'))
         signature = (int(p_text['signature']), None)
-        challenge = SHA256.new(self.key.publickey().exportKey()).digest()
-        if (p_text['ssid'], self.ap_pk.exportKey()) not in self.saved:
+        challenge = SHA256.new(st_sk.publickey().exportKey()).digest()
+        if (p_text['ssid'], ap_pk.exportKey()) not in self.saved:
             return False
-        return self.ap_pk.verify(challenge, signature)
+        return ap_pk.verify(challenge, signature)
 
     def __init__(self):
         self.mac_addr = get_hex(6)
+        self.memory = {}
         self.saved = set()
         self.refresh()
 
