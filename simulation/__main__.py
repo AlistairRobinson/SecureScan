@@ -61,6 +61,10 @@ for i in range(0, n):
     history.append(request)
     history.append(response)
 
+if v:
+    for h in history:
+        print(h)
+
 dist = [[] for i in range(0, 10000)]
 
 l = 0
