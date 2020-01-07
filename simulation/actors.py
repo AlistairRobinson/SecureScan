@@ -3,8 +3,9 @@ from Crypto import Random
 from Crypto.Hash import SHA256
 from Crypto.PublicKey.RSA import _RSAobj
 from Crypto.PublicKey import RSA
+from time import sleep
 from typing import List
-import os, binascii, json
+import os, binascii, json, random
 
 def get_hex(i:int) -> str:
     return binascii.b2a_hex(os.urandom(i)).decode('utf-8')
@@ -57,6 +58,7 @@ class Station:
         assert self.key.can_sign()
 
     def send_probe_request(self, beacon:Frame) -> Frame:
+        sleep(random.randint(1, 100) / 1000)
         self.refresh()
         self.ap_pk = RSA.importKey(beacon.contents)
         msg = self.key.publickey().exportKey()
