@@ -1,13 +1,32 @@
 from simulation.actors import Station, AccessPoint
 from simulation.frames import Frame, FrameType
+from typing import List
 from scipy.stats import entropy
 from matplotlib import pyplot as plt
 import matplotlib
 import numpy as np
-import argparse, random, Levenshtein
+import argparse, random, timeit, Levenshtein
+
+def simulate(history:List[Frame]) -> bool:
+    st = random.choice(stations)
+    ap = random.choice(aps)
+    valid = bool(random.getrandbits(1))
+    if valid:
+        st.saved.add((ap.ssid, ap.key.publickey().exportKey()))
+    beacon = ap.send_beacon()
+    request = st.send_probe_request(beacon)
+    response = ap.send_probe_response(request)
+    assert st.verify_probe_response(response) == valid
+    if valid:
+        st.saved.remove((ap.ssid, ap.key.publickey().exportKey()))
+    history.append(beacon)
+    history.append(request)
+    history.append(response)
+    return True
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-v", help = "operate simulation in verbose mode", action = 'store_true')
+parser.add_argument("-t", help = "display timing information for protocol stages", action = 'store_true')
 parser.add_argument("-p", help = "plot data to a given file")
 parser.add_argument("-n", help = "the number of iterations to perform")
 parser.add_argument("-s", help = "the number of stations to simulate")
@@ -22,11 +41,14 @@ s = 1
 a = 1
 p = ""
 v = False
+t = False
 levenshtein_set = False
 entropy_set = False
 
 if args.v:
     v = True
+if args.t:
+    t = True
 if args.p:
     p = args.p
 if args.n:
@@ -51,20 +73,7 @@ aps = [AccessPoint("AP" + str(i)) for i in range(0, a)]
 history = []
 
 for i in range(0, n):
-    st = random.choice(stations)
-    ap = random.choice(aps)
-    valid = bool(random.getrandbits(1))
-    if valid:
-        st.saved.add((ap.ssid, ap.key.publickey().exportKey()))
-    beacon = ap.send_beacon()
-    request = st.send_probe_request(beacon)
-    response = ap.send_probe_response(request)
-    assert st.verify_probe_response(response) == valid
-    if valid:
-        st.saved.remove((ap.ssid, ap.key.publickey().exportKey()))
-    history.append(beacon)
-    history.append(request)
-    history.append(response)
+    simulate(history)
 
 if v:
     for h in history:
@@ -107,6 +116,9 @@ if entropy_set:
         plt.savefig(p)
 
 print("All simulations completed, no anomalies")
+if t:
+    time = timeit.timeit("simulate([])", "from __main__ import simulate", number = 10) / 10
+    print("Average Handshake time: \t" + str(time)[:5] + "s")
 if levenshtein_set:
     print("Average Levenshtein distance: \t%d" % (l / n))
     print("Minimum Levenshtein distance: \t%d" % m)
