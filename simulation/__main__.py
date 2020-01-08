@@ -5,7 +5,7 @@ from scipy.stats import entropy
 from matplotlib import pyplot as plt
 import matplotlib
 import numpy as np
-import argparse, random, timeit, Levenshtein
+import argparse, random, timeit, string, Levenshtein
 
 def simulate(history:List[Frame]) -> bool:
     st = random.choice(stations)
@@ -37,6 +37,7 @@ parser.add_argument("-s", help = "the number of stations to simulate")
 parser.add_argument("-a", help = "the number of access points to simulate")
 parser.add_argument("--levenshtein", help = "calculate Levenshtein distance in simulated data", action = 'store_true')
 parser.add_argument("--entropy", help = "calculate Shannon entropy in simulated data", action = 'store_true')
+parser.add_argument("--r-entropy", help = "calculate relative entropy in simulated data", action = 'store_true')
 parser.add_argument("--all", help = "perform all possible analysis on simulated data", action = 'store_true')
 args = parser.parse_args()
 
@@ -64,36 +65,51 @@ history = []
 for i in range(0, n):
     simulate(history)
 
-dist = [[] for i in range(0, 10000)]
+global_dist = [[] for i in range(0, 5000)]
+local_dists = {}
 
-l = 0
-m = 0
-n = 0
 for f in history:
-    i = 0
     if f.type != FrameType['ProbeRequest']:
         continue
     if args.entropy or args.all:
-        for c in str(f.contents):
-            dist[i].append(c)
-            i += 1
+        for c in range(0, len(str(f.contents))):
+            global_dist[c].append(f.contents[c])
+    if args.r_entropy or args.all:
+        values, counts = np.unique(list(str(f.contents) + string.printable), return_counts = True)
+        local_dists[str(f.sent_at)] = counts
+
+l_sum = 0
+l_min = 0
+r_sum = 0
+r_min = 0
+n = 0
+
+for f in history:
+    if f.type != FrameType['ProbeRequest']:
+        continue
     for h in history:
         if f != h and f.type == h.type:
             assert f.source != h.source
             assert f.contents != h.contents
             if args.levenshtein or args.all:
-                d = Levenshtein.distance(str(f.contents), str(h.contents))
-                if d < m or m == 0:
-                    m = d
-                l += d
-                n += 1
+                l = Levenshtein.distance(str(f.contents), str(h.contents))
+                if l < l_min or l_min == 0:
+                    l_min = l
+                l_sum += l
+            if args.r_entropy or args.all:
+                r = entropy(local_dists[str(f.sent_at)], qk = local_dists[str(h.sent_at)])
+                print(r)
+                if r < r_min or r_min == 0:
+                    r_min = r
+                r_sum += r
+            n += 1
 
 if args.entropy or args.all:
     entropies = []
-    for d in dist:
+    for d in global_dist:
         if d == []:
             continue
-        values, counts = np.unique(d, return_counts=True)
+        values, counts = np.unique(d, return_counts = True)
         entropies.append(entropy(counts))
     plt.plot(entropies)
     plt.show()
@@ -105,7 +121,10 @@ if args.t:
     time = timeit.timeit("simulate([])", "from __main__ import simulate", number = 100) / 100
     print("Average Handshake time: \t" + str(time)[:5] + "s")
 if args.levenshtein or args.all:
-    print("Average Levenshtein distance: \t%d" % (l / n))
-    print("Minimum Levenshtein distance: \t%d" % m)
+    print("Average Levenshtein distance: \t%d" % (l_sum / n))
+    print("Minimum Levenshtein distance: \t%d" % l_min)
+if args.r_entropy or args.all:
+    print("Average relative entropy: \t" + str(r_sum / n))
+    print("Minimum relative entropy: \t" + str(r_min))
 if args.entropy or args.all:
-    print("Total entropy: \t\t\t%d" % sum(entropies))
+    print("Total message entropy: \t\t\t%d" % sum(entropies))
