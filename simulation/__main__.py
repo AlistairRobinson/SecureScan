@@ -22,6 +22,10 @@ def simulate(history:List[Frame]) -> bool:
     history.append(beacon)
     history.append(request)
     history.append(response)
+    if v:
+        print(beacon)
+        print(request)
+        print(response)
     return True
 
 parser = argparse.ArgumentParser()
@@ -74,10 +78,6 @@ history = []
 
 for i in range(0, n):
     simulate(history)
-
-if v:
-    for h in history:
-        print(h)
 
 dist = [[] for i in range(0, 10000)]
 
