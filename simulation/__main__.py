@@ -2,6 +2,7 @@ from simulation.actors import Station, AccessPoint
 from simulation.frames import Frame, FrameType
 from typing import List
 from scipy.stats import entropy
+from scipy.spatial.distance import jensenshannon
 from matplotlib import pyplot as plt
 import matplotlib
 import numpy as np
@@ -38,6 +39,7 @@ parser.add_argument("-a", help = "the number of access points to simulate")
 parser.add_argument("--levenshtein", help = "calculate Levenshtein distance in simulated data", action = 'store_true')
 parser.add_argument("--entropy", help = "calculate Shannon entropy in simulated data", action = 'store_true')
 parser.add_argument("--r-entropy", help = "calculate relative entropy in simulated data", action = 'store_true')
+parser.add_argument("--jensen-shannon", help = "calculate Jensen Shannon distance in simulated data", action = 'store_true')
 parser.add_argument("--all", help = "perform all possible analysis on simulated data", action = 'store_true')
 args = parser.parse_args()
 
@@ -65,7 +67,7 @@ history = []
 for i in range(0, n):
     simulate(history)
 
-global_dist = [[] for i in range(0, 5000)]
+global_dist = [[] for i in range(0, 10000)]
 local_dists = {}
 
 for f in history:
@@ -73,7 +75,7 @@ for f in history:
         continue
     if args.entropy or args.all:
         for c in range(0, len(str(f.contents))):
-            global_dist[c].append(f.contents[c])
+            global_dist[c].append(str(f.contents)[c])
     if args.r_entropy or args.all:
         values, counts = np.unique(list(str(f.contents) + string.printable), return_counts = True)
         local_dists[str(f.sent_at)] = counts
@@ -82,6 +84,8 @@ l_sum = 0
 l_min = 0
 r_sum = 0
 r_min = 0
+js_sum = 0
+js_min = 0
 n = 0
 
 for f in history:
@@ -97,11 +101,15 @@ for f in history:
                     l_min = l
                 l_sum += l
             if args.r_entropy or args.all:
-                r = entropy(local_dists[str(f.sent_at)], qk = local_dists[str(h.sent_at)])
-                print(r)
+                r = entropy(local_dists[str(f.sent_at)], local_dists[str(h.sent_at)])
                 if r < r_min or r_min == 0:
                     r_min = r
                 r_sum += r
+            if args.jensen_shannon or args.all:
+                js = jensenshannon(local_dists[str(f.sent_at)], local_dists[str(h.sent_at)])
+                if js < js_min or js_min == 0:
+                    js_min = js
+                js_sum += js
             n += 1
 
 if args.entropy or args.all:
@@ -121,10 +129,13 @@ if args.t:
     time = timeit.timeit("simulate([])", "from __main__ import simulate", number = 100) / 100
     print("Average Handshake time: \t" + str(time)[:5] + "s")
 if args.levenshtein or args.all:
-    print("Average Levenshtein distance: \t%d" % (l_sum / n))
-    print("Minimum Levenshtein distance: \t%d" % l_min)
+    print("Average Levenshtein distance: \t\t%d" % (l_sum / n))
+    print("Minimum Levenshtein distance: \t\t%d" % l_min)
 if args.r_entropy or args.all:
-    print("Average relative entropy: \t" + str(r_sum / n))
-    print("Minimum relative entropy: \t" + str(r_min))
+    print("Average relative entropy: \t\t" + str(r_sum / n))
+    print("Minimum relative entropy: \t\t" + str(r_min))
+if args.jensen_shannon or args.all:
+    print("Average Jensen Shannon distance: \t" + str(js_sum / n))
+    print("Minimum Jensen Shannon distance: \t" + str(js_min))
 if args.entropy or args.all:
     print("Total message entropy: \t\t\t%d" % sum(entropies))
