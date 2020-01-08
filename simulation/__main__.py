@@ -117,7 +117,7 @@ if entropy_set:
 
 print("All simulations completed, no anomalies")
 if t:
-    time = timeit.timeit("simulate([])", "from __main__ import simulate", number = 10) / 10
+    time = timeit.timeit("simulate([])", "from __main__ import simulate", number = 100) / 100
     print("Average Handshake time: \t" + str(time)[:5] + "s")
 if levenshtein_set:
     print("Average Levenshtein distance: \t%d" % (l / n))
