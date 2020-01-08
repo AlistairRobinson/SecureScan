@@ -22,7 +22,7 @@ def simulate(history:List[Frame]) -> bool:
     history.append(beacon)
     history.append(request)
     history.append(response)
-    if v:
+    if args.v:
         print(beacon)
         print(request)
         print(response)
@@ -44,15 +44,7 @@ n = 100
 s = 1
 a = 1
 p = ""
-v = False
-t = False
-levenshtein_set = False
-entropy_set = False
 
-if args.v:
-    v = True
-if args.t:
-    t = True
 if args.p:
     p = args.p
 if args.n:
@@ -61,13 +53,6 @@ if args.s:
     s = int(args.s)
 if args.a:
     a = int(args.a)
-if args.levenshtein:
-    levenshtein_set = True
-if args.entropy:
-    entropy_set = True
-if args.all:
-    levenshtein_set = True
-    entropy_set = True
 
 print("Beginning simulation with %d stations, %d access points, %d repetitions" % (s, a, n))
 
@@ -88,7 +73,7 @@ for f in history:
     i = 0
     if f.type != FrameType['ProbeRequest']:
         continue
-    if entropy_set:
+    if args.entropy or args.all:
         for c in str(f.contents):
             dist[i].append(c)
             i += 1
@@ -96,14 +81,14 @@ for f in history:
         if f != h and f.type == h.type:
             assert f.source != h.source
             assert f.contents != h.contents
-            if levenshtein_set:
+            if args.levenshtein or args.all:
                 d = Levenshtein.distance(str(f.contents), str(h.contents))
                 if d < m or m == 0:
                     m = d
                 l += d
                 n += 1
 
-if entropy_set:
+if args.entropy or args.all:
     entropies = []
     for d in dist:
         if d == []:
@@ -116,11 +101,11 @@ if entropy_set:
         plt.savefig(p)
 
 print("All simulations completed, no anomalies")
-if t:
+if args.t:
     time = timeit.timeit("simulate([])", "from __main__ import simulate", number = 100) / 100
     print("Average Handshake time: \t" + str(time)[:5] + "s")
-if levenshtein_set:
+if args.levenshtein or args.all:
     print("Average Levenshtein distance: \t%d" % (l / n))
     print("Minimum Levenshtein distance: \t%d" % m)
-if entropy_set:
+if args.entropy or args.all:
     print("Total entropy: \t\t\t%d" % sum(entropies))
