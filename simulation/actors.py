@@ -17,11 +17,11 @@ def fragment(l:List[bytes], n:int) -> List[List[bytes]]:
 
 class AccessPoint:
 
-    def send_beacon(self) -> Frame:
+    def send_secure_beacon(self) -> Frame:
         return Frame(FrameType['Beacon'],
                      self.mac_addr, "*", self.key.publickey().exportKey())
 
-    def send_probe_response(self, request:Frame) -> Frame:
+    def send_secure_probe_response(self, request:Frame) -> Frame:
         msg = [self.key.decrypt(i) for i in request.contents]
         p_text = bytes([b for s in msg for b in s])
         st_pk = RSA.importKey(p_text)
@@ -56,7 +56,7 @@ class Station:
         assert self.key.has_private()
         assert self.key.can_sign()
 
-    def send_probe_request(self, beacon:Frame) -> Frame:
+    def send_secure_probe_request(self, beacon:Frame) -> Frame:
         if beacon.source in self.memory:
             return None
         time.sleep(random.randint(1, 100) / 1000)
@@ -73,7 +73,7 @@ class Station:
         return Frame(FrameType['ProbeRequest'],
                      self.rmac_addr, "*", c_text)
 
-    def verify_probe_response(self, response:Frame) -> bool:
+    def verify_secure_probe_response(self, response:Frame) -> bool:
         if response.source not in self.memory:
             return False
         if time.time() - self.memory[response.source]['time'] > 1:

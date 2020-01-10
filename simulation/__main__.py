@@ -14,10 +14,10 @@ def simulate(history:List[Frame]) -> bool:
     valid = bool(random.getrandbits(1))
     if valid:
         st.saved.add((ap.ssid, ap.key.publickey().exportKey()))
-    beacon = ap.send_beacon()
-    request = st.send_probe_request(beacon)
-    response = ap.send_probe_response(request)
-    assert st.verify_probe_response(response) == valid
+    beacon = ap.send_secure_beacon()
+    request = st.send_secure_probe_request(beacon)
+    response = ap.send_secure_probe_response(request)
+    assert st.verify_secure_probe_response(response) == valid
     if valid:
         st.saved.remove((ap.ssid, ap.key.publickey().exportKey()))
     history.append(beacon)
@@ -127,7 +127,7 @@ if args.entropy or args.all:
 print("All simulations completed, no anomalies")
 if args.t:
     time = timeit.timeit("simulate([])", "from __main__ import simulate", number = 100) / 100
-    print("Average Handshake time: \t" + str(time)[:5] + "s")
+    print("Average handshake time: \t\t" + str(time)[:5] + "s")
 if args.levenshtein or args.all:
     print("Average Levenshtein distance: \t\t%d" % (l_sum / n))
     print("Minimum Levenshtein distance: \t\t%d" % l_min)
