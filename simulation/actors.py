@@ -17,9 +17,17 @@ def fragment(l:List[bytes], n:int) -> List[List[bytes]]:
 
 class AccessPoint:
 
+    def send_beacon(self) -> Frame:
+        return Frame(FrameType['Beacon'], self.mac_addr, "*", self.ssid)
+
     def send_secure_beacon(self) -> Frame:
         return Frame(FrameType['Beacon'],
                      self.mac_addr, "*", self.key.publickey().exportKey())
+
+    def send_probe_response(self, request:Frame) -> Frame:
+        if request.contents == self.ssid or request.contents == "*":
+            return Frame(FrameType['ProbeResponse'],
+                         self.mac_addr, request.source, self.ssid)
 
     def send_secure_probe_response(self, request:Frame) -> Frame:
         msg = [self.key.decrypt(i) for i in request.contents]
@@ -55,6 +63,14 @@ class Station:
         assert self.key.can_encrypt()
         assert self.key.has_private()
         assert self.key.can_sign()
+
+    def send_probe_request(self, beacon:Frame) -> Frame:
+        self.rmac_addr = get_hex(6)
+        if beacon.contents in [i[0] for i in self.saved]:
+            return Frame(FrameType['ProbeRequest'],
+                         self.rmac_addr, "*", beacon.contents)
+        else:
+            return None
 
     def send_secure_probe_request(self, beacon:Frame) -> Frame:
         if beacon.source in self.memory:

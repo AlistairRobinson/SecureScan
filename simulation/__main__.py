@@ -25,6 +25,26 @@ def simulate_secure_scan(history:List[Frame]) -> bool:
         print(response)
     return True
 
+def simulate_standard(history:List[Frame]) -> bool:
+    st = random.choice(stations)
+    ap = random.choice(aps)
+    valid = (ap.ssid in [i[0] for i in st.saved])
+    beacon = ap.send_beacon()
+    history.append(beacon)
+    if args.v:
+        print(beacon)
+    request = st.send_probe_request(beacon)
+    if not valid:
+        assert request is None
+    else:
+        response = ap.send_probe_response(request)
+        history.append(request)
+        history.append(response)
+        if args.v:
+            print(request)
+            print(response)
+    return True
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-v", help = "operate simulation in verbose mode", action = 'store_true')
 parser.add_argument("-t", help = "display timing information for protocol stages", action = 'store_true')
@@ -32,6 +52,7 @@ parser.add_argument("-p", help = "plot data to a given file")
 parser.add_argument("-n", help = "the number of iterations to perform")
 parser.add_argument("-s", help = "the number of stations to simulate")
 parser.add_argument("-a", help = "the number of access points to simulate")
+parser.add_argument("--protocol", help = "the handshake protocol to use")
 parser.add_argument("--levenshtein", help = "calculate Levenshtein distance in simulated data", action = 'store_true')
 parser.add_argument("--entropy", help = "calculate Shannon entropy in simulated data", action = 'store_true')
 parser.add_argument("--r-entropy", help = "calculate relative entropy in simulated data", action = 'store_true')
@@ -53,10 +74,14 @@ if args.s:
 if args.a:
     a = int(args.a)
 
+if not args.protocol or args.protocol.lower() not in ["standard", "lindqvist", "secure_scan"]:
+    print("Protocol not recognised, expected one of 'standard', 'lindqvist', 'secure_scan'")
+    exit(0)
+
 print("Beginning simulation with %d stations, %d access points, %d repetitions" % (s, a, n))
 
 stations = [Station() for i in range(0, s)]
-aps = [AccessPoint("AP" + str(i)) for i in range(0, a)]
+aps = [AccessPoint(''.join(random.choice(string.ascii_lowercase) for i in range(8))) for i in range(0, a)]
 
 for station in stations:
     for i in range(0, random.randint(0, len(aps))):
@@ -66,7 +91,10 @@ for station in stations:
 history = []
 
 for i in range(0, n):
-    simulate_secure_scan(history)
+    if args.protocol.lower() == "standard":
+        simulate_standard(history)
+    if args.protocol.lower() == "secure_scan":
+        simulate_secure_scan(history)
 
 global_dist = [[] for i in range(0, 10000)]
 local_dists = {}
@@ -93,9 +121,7 @@ for f in history:
     if f.type != FrameType['ProbeRequest']:
         continue
     for h in history:
-        if f != h and f.type == h.type:
-            assert f.source != h.source
-            assert f.contents != h.contents
+        if f.sent_at != h.sent_at and f.type == h.type:
             if args.levenshtein or args.all:
                 l = Levenshtein.distance(str(f.contents), str(h.contents))
                 if l < l_min or l_min == 0:
@@ -127,8 +153,12 @@ if args.entropy or args.all:
 
 print("All simulations completed, no anomalies")
 if args.t:
-    time = timeit.timeit("simulate_secure_scan([])",
-                         "from __main__ import simulate_secure_scan", number = 100) / 100
+    if args.protocol.lower() == "standard":
+        time = timeit.timeit("simulate_standard([])",
+                             "from __main__ import simulate_standard", number = 100) / 100
+    if args.protocol.lower() == "secure_scan":
+        time = timeit.timeit("simulate_secure_scan([])",
+                            "from __main__ import simulate_secure_scan", number = 100) / 100
     print("Average handshake time: \t\t" + str(time)[:5] + "s")
 if args.levenshtein or args.all:
     print("Average Levenshtein distance: \t\t%d" % (l_sum / n))
