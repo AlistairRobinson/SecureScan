@@ -8,18 +8,14 @@ import matplotlib
 import numpy as np
 import argparse, random, timeit, string, Levenshtein
 
-def simulate(history:List[Frame]) -> bool:
+def simulate_secure_scan(history:List[Frame]) -> bool:
     st = random.choice(stations)
     ap = random.choice(aps)
-    valid = bool(random.getrandbits(1))
-    if valid:
-        st.saved.add((ap.ssid, ap.key.publickey().exportKey()))
+    valid = ((ap.ssid, ap.key.publickey().exportKey()) in st.saved)
     beacon = ap.send_secure_beacon()
     request = st.send_secure_probe_request(beacon)
     response = ap.send_secure_probe_response(request)
     assert st.verify_secure_probe_response(response) == valid
-    if valid:
-        st.saved.remove((ap.ssid, ap.key.publickey().exportKey()))
     history.append(beacon)
     history.append(request)
     history.append(response)
@@ -62,10 +58,15 @@ print("Beginning simulation with %d stations, %d access points, %d repetitions" 
 stations = [Station() for i in range(0, s)]
 aps = [AccessPoint("AP" + str(i)) for i in range(0, a)]
 
+for station in stations:
+    for i in range(0, random.randint(0, len(aps))):
+        ap = random.choice(aps)
+        station.saved.add((ap.ssid, ap.key.publickey().exportKey()))
+
 history = []
 
 for i in range(0, n):
-    simulate(history)
+    simulate_secure_scan(history)
 
 global_dist = [[] for i in range(0, 10000)]
 local_dists = {}
@@ -126,7 +127,8 @@ if args.entropy or args.all:
 
 print("All simulations completed, no anomalies")
 if args.t:
-    time = timeit.timeit("simulate([])", "from __main__ import simulate", number = 100) / 100
+    time = timeit.timeit("simulate_secure_scan([])",
+                         "from __main__ import simulate_secure_scan", number = 100) / 100
     print("Average handshake time: \t\t" + str(time)[:5] + "s")
 if args.levenshtein or args.all:
     print("Average Levenshtein distance: \t\t%d" % (l_sum / n))
