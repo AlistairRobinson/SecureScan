@@ -53,6 +53,7 @@ parser.add_argument("-n", help = "the number of iterations to perform")
 parser.add_argument("-s", help = "the number of stations to simulate")
 parser.add_argument("-a", help = "the number of access points to simulate")
 parser.add_argument("--protocol", help = "the handshake protocol to use")
+parser.add_argument("--distribution", help = "the access point distribution to use")
 parser.add_argument("--entropy", help = "calculate Shannon entropy in simulated data", action = 'store_true')
 parser.add_argument("--r-entropy", help = "calculate relative entropy in simulated data", action = 'store_true')
 parser.add_argument("--jensen-shannon", help = "calculate Jensen Shannon distance in simulated data", action = 'store_true')
@@ -74,8 +75,12 @@ if args.a:
     a = int(args.a)
 
 if not args.protocol or args.protocol.lower() not in ["standard", "lindqvist", "secure_scan"]:
-    print("Protocol not recognised, expected one of 'standard', 'lindqvist', 'secure_scan'")
-    exit(0)
+    print("Using default secure_scan protocol")
+    args.protocol = "secure_scan"
+
+if not args.distribution or args.distribution.lower() not in ["uniform", "cumulative"]:
+    print("Using default cumulative distribution")
+    args.distribution = "cumulative"
 
 print("Beginning simulation with %d stations, %d access points, %d repetitions" % (s, a, n))
 
@@ -84,8 +89,11 @@ aps = [AccessPoint(''.join(random.choice(string.ascii_lowercase) for i in range(
 
 for station in stations:
     for i in range(0, random.randint(0, len(aps))):
-        ap = random.choice(aps)
-        station.saved.add((ap.ssid, ap.key.publickey().exportKey()))
+        if args.distribution.lower() == "cumulative":
+            station.saved.add((aps[i].ssid, aps[i].key.publickey().exportKey()))
+        if args.distribution.lower() == "uniform":
+            ap = random.choice(aps)
+            station.saved.add((ap.ssid, ap.key.publickey().exportKey()))
 
 history = []
 
@@ -108,12 +116,10 @@ for f in history:
         values, counts = np.unique(list(str(f.contents) + string.printable), return_counts = True)
         local_dists[str(f.sent_at)] = counts
 
-l_sum = 0
-l_min = 0
 r_sum = 0
-r_min = 0
+r_min = -1
 js_sum = 0
-js_min = 0
+js_min = -1
 n = 0
 
 for f in history:
@@ -123,12 +129,12 @@ for f in history:
         if f.sent_at != h.sent_at and f.type == h.type:
             if args.r_entropy or args.all:
                 r = entropy(local_dists[str(f.sent_at)], local_dists[str(h.sent_at)])
-                if r < r_min or r_min == 0:
+                if r < r_min or r_min == -1:
                     r_min = r
                 r_sum += r
             if args.jensen_shannon or args.all:
                 js = jensenshannon(local_dists[str(f.sent_at)], local_dists[str(h.sent_at)])
-                if js < js_min or js_min == 0:
+                if js < js_min or js_min == -1:
                     js_min = js
                 js_sum += js
             n += 1
