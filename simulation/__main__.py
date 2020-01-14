@@ -6,7 +6,7 @@ from scipy.spatial.distance import jensenshannon
 from matplotlib import pyplot as plt
 import matplotlib
 import numpy as np
-import argparse, random, timeit, string, Levenshtein
+import argparse, random, timeit, string
 
 def simulate_secure_scan(history:List[Frame]) -> bool:
     st = random.choice(stations)
@@ -53,7 +53,6 @@ parser.add_argument("-n", help = "the number of iterations to perform")
 parser.add_argument("-s", help = "the number of stations to simulate")
 parser.add_argument("-a", help = "the number of access points to simulate")
 parser.add_argument("--protocol", help = "the handshake protocol to use")
-parser.add_argument("--levenshtein", help = "calculate Levenshtein distance in simulated data", action = 'store_true')
 parser.add_argument("--entropy", help = "calculate Shannon entropy in simulated data", action = 'store_true')
 parser.add_argument("--r-entropy", help = "calculate relative entropy in simulated data", action = 'store_true')
 parser.add_argument("--jensen-shannon", help = "calculate Jensen Shannon distance in simulated data", action = 'store_true')
@@ -122,11 +121,6 @@ for f in history:
         continue
     for h in history:
         if f.sent_at != h.sent_at and f.type == h.type:
-            if args.levenshtein or args.all:
-                l = Levenshtein.distance(str(f.contents), str(h.contents))
-                if l < l_min or l_min == 0:
-                    l_min = l
-                l_sum += l
             if args.r_entropy or args.all:
                 r = entropy(local_dists[str(f.sent_at)], local_dists[str(h.sent_at)])
                 if r < r_min or r_min == 0:
@@ -159,10 +153,7 @@ if args.t:
     if args.protocol.lower() == "secure_scan":
         time = timeit.timeit("simulate_secure_scan([])",
                             "from __main__ import simulate_secure_scan", number = 100) / 100
-    print("Average handshake time: \t\t" + str(time)[:5] + "s")
-if args.levenshtein or args.all:
-    print("Average Levenshtein distance: \t\t%d" % (l_sum / n))
-    print("Minimum Levenshtein distance: \t\t%d" % l_min)
+    print("Average handshake time: \t\t" + str(time) + "s")
 if args.r_entropy or args.all:
     print("Average relative entropy: \t\t" + str(r_sum / n))
     print("Minimum relative entropy: \t\t" + str(r_min))
