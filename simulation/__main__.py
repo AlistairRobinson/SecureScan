@@ -55,7 +55,6 @@ parser.add_argument("-a", help = "the number of access points to simulate")
 parser.add_argument("--protocol", help = "the handshake protocol to use")
 parser.add_argument("--distribution", help = "the access point distribution to use")
 parser.add_argument("--entropy", help = "calculate Shannon entropy in simulated data", action = 'store_true')
-parser.add_argument("--r-entropy", help = "calculate relative entropy in simulated data", action = 'store_true')
 parser.add_argument("--jensen-shannon", help = "calculate Jensen Shannon distance in simulated data", action = 'store_true')
 parser.add_argument("--all", help = "perform all possible analysis on simulated data", action = 'store_true')
 args = parser.parse_args()
@@ -112,12 +111,10 @@ for f in history:
     if args.entropy or args.all:
         for c in range(0, len(str(f.contents))):
             global_dist[c].append(str(f.contents)[c])
-    if args.r_entropy or args.all:
+    if args.jensen_shannon or args.all:
         values, counts = np.unique(list(str(f.contents) + string.printable), return_counts = True)
-        local_dists[str(f.sent_at)] = counts
+        local_dists[str(f.sent_at)] = counts - 1
 
-r_sum = 0
-r_min = -1
 js_sum = 0
 js_min = -1
 n = 0
@@ -127,11 +124,6 @@ for f in history:
         continue
     for h in history:
         if f.sent_at != h.sent_at and f.type == h.type:
-            if args.r_entropy or args.all:
-                r = entropy(local_dists[str(f.sent_at)], local_dists[str(h.sent_at)])
-                if r < r_min or r_min == -1:
-                    r_min = r
-                r_sum += r
             if args.jensen_shannon or args.all:
                 js = jensenshannon(local_dists[str(f.sent_at)], local_dists[str(h.sent_at)])
                 if js < js_min or js_min == -1:
@@ -160,9 +152,6 @@ if args.t:
         time = timeit.timeit("simulate_secure_scan([])",
                             "from __main__ import simulate_secure_scan", number = 100) / 100
     print("Average handshake time: \t\t" + str(time) + "s")
-if args.r_entropy or args.all:
-    print("Average relative entropy: \t\t" + str(r_sum / n))
-    print("Minimum relative entropy: \t\t" + str(r_min))
 if args.jensen_shannon or args.all:
     print("Average Jensen Shannon distance: \t" + str(js_sum / n))
     print("Minimum Jensen Shannon distance: \t" + str(js_min))
