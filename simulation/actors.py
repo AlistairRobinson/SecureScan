@@ -74,7 +74,8 @@ class Station:
 
     def send_secure_probe_request(self, beacon:Frame) -> Frame:
         if beacon.source in self.memory:
-            return None
+            if time.time() - self.memory[beacon.source]['time'] < 1:
+                return None
         time.sleep(random.randint(1, 100) / 1000)
         self.refresh()
         ap_pk = RSA.importKey(beacon.contents)
