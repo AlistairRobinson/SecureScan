@@ -48,15 +48,12 @@ def simulate_standard(history:List[Frame]) -> bool:
 parser = argparse.ArgumentParser()
 parser.add_argument("-v", help = "operate simulation in verbose mode", action = 'store_true')
 parser.add_argument("-t", help = "display timing information for protocol stages", action = 'store_true')
-parser.add_argument("-p", help = "plot data to a given file")
+parser.add_argument("-p", help = "plot Shannon Entropy and Jensen-Shannon distance", action = 'store_true')
 parser.add_argument("-n", help = "the number of iterations to perform")
 parser.add_argument("-s", help = "the number of stations to simulate")
 parser.add_argument("-a", help = "the number of access points to simulate")
 parser.add_argument("--protocol", help = "the handshake protocol to use")
 parser.add_argument("--distribution", help = "the access point distribution to use")
-parser.add_argument("--entropy", help = "calculate Shannon entropy in simulated data", action = 'store_true')
-parser.add_argument("--jensen-shannon", help = "calculate Jensen Shannon distance in simulated data", action = 'store_true')
-parser.add_argument("--all", help = "perform all possible analysis on simulated data", action = 'store_true')
 args = parser.parse_args()
 
 n = 100
@@ -64,8 +61,6 @@ s = 1
 a = 1
 p = ""
 
-if args.p:
-    p = args.p
 if args.n:
     n = int(args.n)
 if args.s:
@@ -108,40 +103,44 @@ local_dists = {}
 for f in history:
     if f.type != FrameType['ProbeRequest']:
         continue
-    if args.entropy or args.all:
-        for c in range(0, len(str(f.contents))):
-            global_dist[c].append(str(f.contents)[c])
-    if args.jensen_shannon or args.all:
-        values, counts = np.unique(list(str(f.contents) + string.printable), return_counts = True)
-        local_dists[str(f.sent_at)] = counts - 1
+    for c in range(0, len(str(f.contents))):
+        global_dist[c].append(str(f.contents)[c])
+    values, counts = np.unique(list(str(f.contents) + string.printable), return_counts = True)
+    local_dists[str(f.sent_at)] = counts - 1
 
-js_sum = 0
-js_min = -1
-n = 0
+js = []
 
 for f in history:
     if f.type != FrameType['ProbeRequest']:
         continue
     for h in history:
-        if f.sent_at != h.sent_at and f.type == h.type:
-            if args.jensen_shannon or args.all:
-                js = jensenshannon(local_dists[str(f.sent_at)], local_dists[str(h.sent_at)])
-                if js < js_min or js_min == -1:
-                    js_min = js
-                js_sum += js
-            n += 1
+        if f != h and f.type == h.type:
+            js.append(jensenshannon(local_dists[str(f.sent_at)], local_dists[str(h.sent_at)]))
 
-if args.entropy or args.all:
-    entropies = []
-    for d in global_dist:
-        if d == []:
-            continue
-        values, counts = np.unique(d, return_counts = True)
-        entropies.append(entropy(counts))
+entropies = []
+for d in global_dist:
+    if d == []:
+        continue
+    values, counts = np.unique(d, return_counts = True)
+    entropies.append(entropy(counts))
+
+if args.p:
+    plt.figure()
     plt.plot(entropies)
+    plt.title("Probe Request Message Entropy")
+    plt.xlabel("Probe Request Character Position")
+    plt.ylabel("Shannon Entropy")
+    plt.axis('tight')
     plt.show()
-    if p != "":
-        plt.savefig(p)
+    plt.savefig(args.protocol + "_" + str(s) + "_" + str(a) + "_" + str(n) + "_epy")
+    plt.figure()
+    plt.plot(sorted(js))
+    plt.title("Sorted Probe Request Jensen-Shannon Distances")
+    plt.xlabel("")
+    plt.ylabel("Jensen-Shannon Distance")
+    plt.axis('tight')
+    plt.show()
+    plt.savefig(args.protocol + "_" + str(s) + "_" + str(a) + "_" + str(n) + "_jsd")
 
 print("All simulations completed, no anomalies")
 if args.t:
@@ -152,8 +151,6 @@ if args.t:
         time = timeit.timeit("simulate_secure_scan([])",
                             "from __main__ import simulate_secure_scan", number = 100) / 100
     print("Average handshake time: \t\t" + str(time) + "s")
-if args.jensen_shannon or args.all:
-    print("Average Jensen Shannon distance: \t" + str(js_sum / n))
-    print("Minimum Jensen Shannon distance: \t" + str(js_min))
-if args.entropy or args.all:
-    print("Total message entropy: \t\t\t%d" % sum(entropies))
+print("Average Jensen Shannon distance: \t" + str(sum(js)/len(js)))
+print("Minimum Jensen Shannon distance: \t" + str(min(js)))
+print("Total message entropy: \t\t\t%d" % sum(entropies))
