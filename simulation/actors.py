@@ -31,11 +31,13 @@ class AccessPoint:
 
     def send_secure_probe_response(self, request:Frame) -> Frame:
         msg = [self.key.decrypt(i) for i in request.contents]
-        p_text = bytes([b for s in msg for b in s])
-        st_pk = RSA.importKey(p_text)
+        p_text = json.loads(bytes([b for s in msg for b in s]).decode('utf-8'))
+        st_pk_exp = p_text['st_pk'][2:-1].replace('\\n', '\n').encode('utf-8')
+        st_pk = RSA.importKey(st_pk_exp)
+        self.memory[p_text['next_rmac']] = time.time()
         message = bytes(json.dumps({
             "ssid": self.ssid,
-            "signature": str(self.key.sign(SHA256.new(p_text).digest(), 32)[0])
+            "signature": str(self.key.sign(SHA256.new(st_pk_exp).digest(), 32)[0])
         }), 'utf-8')
         c_text = [st_pk.encrypt(i, 32) for i in fragment(message, 80)]
         return Frame(FrameType['ProbeResponse'],
@@ -43,6 +45,7 @@ class AccessPoint:
 
     def __init__(self, ssid:str):
         self.mac_addr = get_hex(6)
+        self.memory = {}
         self.ssid = ssid
         self.key = get_key()
         assert self.key.can_encrypt()
@@ -79,12 +82,17 @@ class Station:
         time.sleep(random.randint(1, 100) / 1000)
         self.refresh()
         ap_pk = RSA.importKey(beacon.contents)
+        next_rmac = get_hex(6)
         self.memory[beacon.source] = {
             'ap_pk': ap_pk,
             'st_sk': self.key,
-            'time': time.time()
+            'time': time.time(),
+            'next_rmac': next_rmac
         }
-        msg = self.key.publickey().exportKey()
+        msg = bytes(json.dumps({
+            "st_pk": str(self.key.publickey().exportKey()),
+            "next_rmac": next_rmac
+        }), 'utf-8')
         p_text = fragment(msg, 80)
         c_text = [ap_pk.encrypt(i, 32) for i in p_text]
         return Frame(FrameType['ProbeRequest'],
@@ -97,6 +105,7 @@ class Station:
             return False
         ap_pk = self.memory[response.source]['ap_pk']
         st_sk = self.memory[response.source]['st_sk']
+        next_rmac = self.memory[response.source]['next_rmac']
         self.memory.pop(response.source)
         msg = [st_sk.decrypt(i) for i in response.contents]
         p_text = json.loads(bytes([b for s in msg for b in s]).decode('utf-8'))
@@ -104,7 +113,10 @@ class Station:
         challenge = SHA256.new(st_sk.publickey().exportKey()).digest()
         if (p_text['ssid'], ap_pk.exportKey()) not in self.saved:
             return False
-        return ap_pk.verify(challenge, signature)
+        if not ap_pk.verify(challenge, signature):
+            return False
+        self.mac_addr = next_rmac
+        return True
 
     def __init__(self):
         self.mac_addr = get_hex(6)
