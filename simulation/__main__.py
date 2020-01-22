@@ -68,7 +68,7 @@ if args.s:
 if args.a:
     a = int(args.a)
 
-if not args.protocol or args.protocol.lower() not in ["standard", "lindqvist", "secure_scan"]:
+if not args.protocol or args.protocol.lower() not in ["standard", "secure_scan"]:
     print("Using default secure_scan protocol")
     args.protocol = "secure_scan"
 
@@ -127,20 +127,29 @@ for d in global_dist:
 if args.p:
     plt.figure()
     plt.plot(entropies)
-    plt.title("Probe Request Message Entropy")
-    plt.xlabel("Probe Request Character Position")
+    plt.title("Probe Request Content Entropy")
+    plt.xlabel("Probe Request Content Character Position")
     plt.ylabel("Shannon Entropy")
     plt.axis('tight')
     plt.show()
-    plt.savefig(args.protocol + "_" + str(s) + "_" + str(a) + "_" + str(n) + "_epy")
+    plt.savefig(args.protocol + "_" + str(s) + "_" + str(a) + "_" + str(n) + "_" + args.distribution.lower()[0] + "_epy")
     plt.figure()
     plt.plot(sorted(js))
-    plt.title("Sorted Probe Request Jensen-Shannon Distances")
+    plt.title("Probe Request Content Jensen-Shannon Distribution")
     plt.xlabel("")
     plt.ylabel("Jensen-Shannon Distance")
     plt.axis('tight')
     plt.show()
-    plt.savefig(args.protocol + "_" + str(s) + "_" + str(a) + "_" + str(n) + "_jsd")
+    plt.savefig(args.protocol + "_" + str(s) + "_" + str(a) + "_" + str(n) + "_" + args.distribution.lower()[0] + "_jsd")
+    plt.figure()
+    plt.hist([str(h.contents) for h in filter(lambda f: f.type == FrameType['ProbeRequest'], history)], density = True)
+    plt.title("Probe Request Content Distribution")
+    plt.xlabel("Probe Request Content")
+    plt.ylabel("Occurrence Density")
+    plt.axis('tight')
+    plt.gca().axes.xaxis.set_ticklabels([])
+    plt.show()
+    plt.savefig(args.protocol + "_" + str(s) + "_" + str(a) + "_" + str(n) + "_" + args.distribution.lower()[0] + "_hst")
 
 print("All simulations completed, no anomalies")
 if args.t:
