@@ -6,6 +6,7 @@ from scipy.spatial.distance import jensenshannon
 from matplotlib import pyplot as plt
 import matplotlib
 import numpy as np
+import pandas as pd
 import argparse, random, timeit, string
 
 def simulate_secure_scan(history:List[Frame]) -> bool:
@@ -36,6 +37,7 @@ def simulate_standard(history:List[Frame]) -> bool:
     request = st.send_probe_request(beacon)
     if not valid:
         assert request is None
+        return False
     else:
         response = ap.send_probe_response(request)
         history.append(request)
@@ -43,7 +45,7 @@ def simulate_standard(history:List[Frame]) -> bool:
         if args.v:
             print(request)
             print(response)
-    return True
+        return True
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-v", help = "operate simulation in verbose mode", action = 'store_true')
@@ -93,16 +95,18 @@ history = []
 
 for i in range(0, n):
     if args.protocol.lower() == "standard":
-        simulate_standard(history)
+        while not simulate_standard(history):
+            pass
     if args.protocol.lower() == "secure_scan":
         simulate_secure_scan(history)
+
+probe_requests = [h for h in filter(lambda f: f.type == FrameType['ProbeRequest'], history)]
+unique_probe_requests = list(set([str(p.contents) for p in probe_requests]))
 
 global_dist = [[] for i in range(0, 10000)]
 local_dists = {}
 
-for f in history:
-    if f.type != FrameType['ProbeRequest']:
-        continue
+for f in probe_requests:
     for c in range(0, len(str(f.contents))):
         global_dist[c].append(str(f.contents)[c])
     values, counts = np.unique(list(str(f.contents) + string.printable), return_counts = True)
@@ -110,12 +114,10 @@ for f in history:
 
 js = []
 
-for f in history:
-    if f.type != FrameType['ProbeRequest']:
-        continue
-    for h in history:
-        if f != h and f.type == h.type:
-            js.append(jensenshannon(local_dists[str(f.sent_at)], local_dists[str(h.sent_at)]))
+for f in range(0, len(probe_requests)):
+    for h in range(f + 1, len(probe_requests)):
+        js.append(jensenshannon(local_dists[str(probe_requests[f].sent_at)],
+                                local_dists[str(probe_requests[h].sent_at)]))
 
 entropies = []
 for d in global_dist:
@@ -134,20 +136,21 @@ if args.p:
     plt.show()
     plt.savefig(args.protocol + "_" + str(s) + "_" + str(a) + "_" + str(n) + "_" + args.distribution.lower()[0] + "_epy")
     plt.figure()
-    plt.plot(sorted(js))
+    plt.hist(js)
     plt.title("Probe Request Content Jensen-Shannon Distribution")
-    plt.xlabel("")
-    plt.ylabel("Jensen-Shannon Distance")
+    plt.xlabel("Jensen-Shannon Distance")
+    plt.ylabel("Occurrences")
     plt.axis('tight')
     plt.show()
     plt.savefig(args.protocol + "_" + str(s) + "_" + str(a) + "_" + str(n) + "_" + args.distribution.lower()[0] + "_jsd")
     plt.figure()
-    plt.hist([str(h.contents) for h in filter(lambda f: f.type == FrameType['ProbeRequest'], history)], density = True)
+    pd.Series([str(p.contents) for p in probe_requests]).value_counts().plot(kind = 'area')
     plt.title("Probe Request Content Distribution")
     plt.xlabel("Probe Request Content")
-    plt.ylabel("Occurrence Density")
+    plt.ylabel("Occurrences Density")
     plt.axis('tight')
-    plt.gca().axes.xaxis.set_ticklabels([])
+    if args.protocol.lower() == "secure_scan":
+        plt.gca().axes.xaxis.set_ticklabels([])
     plt.show()
     plt.savefig(args.protocol + "_" + str(s) + "_" + str(a) + "_" + str(n) + "_" + args.distribution.lower()[0] + "_hst")
 
@@ -160,6 +163,8 @@ if args.t:
         time = timeit.timeit("simulate_secure_scan([])",
                             "from __main__ import simulate_secure_scan", number = 100) / 100
     print("Average handshake time: \t\t" + str(time) + "s")
-print("Average Jensen Shannon distance: \t" + str(sum(js)/len(js)))
-print("Minimum Jensen Shannon distance: \t" + str(min(js)))
+print("Total Probe Requests:  \t\t\t" + str(len(probe_requests)))
+print("Unique Probe Requests: \t\t\t" + str(len(unique_probe_requests)))
+print("Average Jensen-Shannon distance: \t" + str(sum(js)/len(js)))
+print("Minimum Jensen-Shannon distance: \t" + str(min(js)))
 print("Total message entropy: \t\t\t%d" % sum(entropies))
