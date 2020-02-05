@@ -80,7 +80,7 @@ print("Initialised {} access points...".format(a))
 print("Beginning simulation with {} stations, {} access points, {} repetitions".format(s, a, n))
 
 for station in stations:
-    for i in range(0, random.randint(0, len(aps))):
+    for i in range(0, random.randint(0, len(aps)) + 1):
         ap = random.choice(aps)
         station.saved.add((ap.ssid, ap.key.publickey().exportKey()))
 
@@ -127,7 +127,7 @@ if args.p:
     plt.ylabel("Shannon Entropy")
     plt.axis('tight')
     plt.show()
-    plt.savefig(args.protocol + "_" + str(s) + "_" + str(a) + "_" + str(n) + "_" + args.distribution.lower()[0] + "_epy")
+    plt.savefig("{}_{}_{}_{}_epy".format(args.protocol, s, a, n))
     plt.figure()
     plt.hist(js)
     plt.title("Probe Request Content Jensen-Shannon Distribution")
@@ -135,7 +135,7 @@ if args.p:
     plt.ylabel("Occurrences")
     plt.axis('tight')
     plt.show()
-    plt.savefig(args.protocol + "_" + str(s) + "_" + str(a) + "_" + str(n) + "_" + args.distribution.lower()[0] + "_jsd")
+    plt.savefig("{}_{}_{}_{}_jsd".format(args.protocol, s, a, n))
     plt.figure()
     pd.Series([str(p.contents) for p in probe_requests]).value_counts().plot(kind = 'area')
     plt.title("Probe Request Content Distribution")
@@ -145,7 +145,7 @@ if args.p:
     if args.protocol.lower() == "secure_scan":
         plt.gca().axes.xaxis.set_ticklabels([])
     plt.show()
-    plt.savefig(args.protocol + "_" + str(s) + "_" + str(a) + "_" + str(n) + "_" + args.distribution.lower()[0] + "_hst")
+    plt.savefig("{}_{}_{}_{}_hst".format(args.protocol, s, a, n))
 
 print("All simulations completed, no anomalies")
 if args.t:
