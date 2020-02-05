@@ -73,10 +73,11 @@ if not args.protocol or args.protocol.lower() not in ["standard", "secure_scan"]
     print("Using default secure_scan protocol")
     args.protocol = "secure_scan"
 
-print("Beginning simulation with %d stations, %d access points, %d repetitions" % (s, a, n))
-
 stations = [Station() for i in range(0, s)]
+print("Initialised {} stations...".format(s))
 aps = [AccessPoint(''.join(random.choice(string.ascii_lowercase) for i in range(8))) for i in range(0, a)]
+print("Initialised {} access points...".format(a))
+print("Beginning simulation with {} stations, {} access points, {} repetitions".format(s, a, n))
 
 for station in stations:
     for i in range(0, random.randint(0, len(aps))):
@@ -154,10 +155,10 @@ if args.t:
     if args.protocol.lower() == "secure_scan":
         time = timeit.timeit("simulate_secure_scan([])",
                             "from __main__ import simulate_secure_scan", number = 100) / 100
-    print("Average handshake time: \t\t{}s".format(time))
-print("Total Probe Requests:  \t\t\t{}".format(len(probe_requests)))
-print("Unique Probe Requests: \t\t\t{}".format(len(unique_probe_requests)))
-print("Average Jensen-Shannon distance: \t{}".format(sum(js)/len(js)))
-print("Minimum Jensen-Shannon distance: \t{}".format(min(js)))
-print("Std-Dev Jensen-Shannon distance: \t{}".format(np.std(js)))
-print("Total message entropy: \t\t\t{}".format(sum(entropies)))
+    print("Average handshake time: \t\t\t{}s".format(time))
+print("Total Probe Requests:  \t\t\t\t{}".format(len(probe_requests)))
+print("Unique Probe Requests: \t\t\t\t{}".format(len(unique_probe_requests)))
+print("Average Jensen-Shannon distance: \t\t{}".format(sum(js)/len(js)))
+print("Minimum Jensen-Shannon distance: \t\t{}".format(min(js)))
+print("Std-Dev Jensen-Shannon distance: \t\t{}".format(np.std(js)))
+print("Total message entropy: \t\t\t\t{}".format(sum(entropies)))
