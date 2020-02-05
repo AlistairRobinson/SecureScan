@@ -55,7 +55,6 @@ parser.add_argument("-n", help = "the number of iterations to perform")
 parser.add_argument("-s", help = "the number of stations to simulate")
 parser.add_argument("-a", help = "the number of access points to simulate")
 parser.add_argument("--protocol", help = "the handshake protocol to use")
-parser.add_argument("--distribution", help = "the access point distribution to use")
 args = parser.parse_args()
 
 n = 100
@@ -74,10 +73,6 @@ if not args.protocol or args.protocol.lower() not in ["standard", "secure_scan"]
     print("Using default secure_scan protocol")
     args.protocol = "secure_scan"
 
-if not args.distribution or args.distribution.lower() not in ["uniform", "cumulative"]:
-    print("Using default cumulative distribution")
-    args.distribution = "cumulative"
-
 print("Beginning simulation with %d stations, %d access points, %d repetitions" % (s, a, n))
 
 stations = [Station() for i in range(0, s)]
@@ -85,11 +80,8 @@ aps = [AccessPoint(''.join(random.choice(string.ascii_lowercase) for i in range(
 
 for station in stations:
     for i in range(0, random.randint(0, len(aps))):
-        if args.distribution.lower() == "cumulative":
-            station.saved.add((aps[i].ssid, aps[i].key.publickey().exportKey()))
-        if args.distribution.lower() == "uniform":
-            ap = random.choice(aps)
-            station.saved.add((ap.ssid, ap.key.publickey().exportKey()))
+        ap = random.choice(aps)
+        station.saved.add((ap.ssid, ap.key.publickey().exportKey()))
 
 history = []
 
