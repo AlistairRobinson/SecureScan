@@ -8,11 +8,12 @@ class FrameType(Enum):
 
 class Frame:
 
-    def __init__(self, t:FrameType, src:str, dest:str, data):
+    def __init__(self, t:FrameType, src:str, dest:str, uid:int, data):
         self.sent_at = datetime.now()
         self.type = t
         self.source = src
         self.destination = dest
+        self.uid = uid
         self.contents = data
 
     def __str__(self):
@@ -20,4 +21,5 @@ class Frame:
         "Sent at: \t" + str(self.sent_at) + "\n" \
         "Source: \t" + self.source + "\n" \
         "Destination: \t" + self.destination + "\n" \
+        "Sent by actor " + str(self.uid) + "\n" \
         "Contents: \n" + str(self.contents)

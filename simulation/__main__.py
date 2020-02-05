@@ -73,9 +73,9 @@ if not args.protocol or args.protocol.lower() not in ["standard", "secure_scan"]
     print("Using default secure_scan protocol")
     args.protocol = "secure_scan"
 
-stations = [Station() for i in range(0, s)]
+stations = [Station(i) for i in range(0, s)]
 print("Initialised {} stations...".format(s))
-aps = [AccessPoint(''.join(random.choice(string.ascii_lowercase) for i in range(8))) for i in range(0, a)]
+aps = [AccessPoint(''.join(random.choice(string.ascii_lowercase) for i in range(8)), i) for i in range(0, a)]
 print("Initialised {} access points...".format(a))
 print("Beginning simulation with {} stations, {} access points, {} repetitions".format(s, a, n))
 

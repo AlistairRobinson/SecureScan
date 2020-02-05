@@ -18,16 +18,16 @@ def fragment(l:List[bytes], n:int) -> List[List[bytes]]:
 class AccessPoint:
 
     def send_beacon(self) -> Frame:
-        return Frame(FrameType['Beacon'], self.mac_addr, "*", self.ssid)
+        return Frame(FrameType['Beacon'], self.mac_addr, "*", self.uid, self.ssid)
 
     def send_secure_beacon(self) -> Frame:
         return Frame(FrameType['Beacon'],
-                     self.mac_addr, "*", self.key.publickey().exportKey())
+                     self.mac_addr, "*", self.uid, self.key.publickey().exportKey())
 
     def send_probe_response(self, request:Frame) -> Frame:
         if request.contents == self.ssid or request.contents == "*":
             return Frame(FrameType['ProbeResponse'],
-                         self.mac_addr, request.source, self.ssid)
+                         self.mac_addr, request.source, self.uid, self.ssid)
 
     def send_secure_probe_response(self, request:Frame) -> Frame:
         msg = [self.key.decrypt(i) for i in request.contents]
@@ -41,12 +41,13 @@ class AccessPoint:
         }), 'utf-8')
         c_text = [st_pk.encrypt(i, 32) for i in fragment(message, 80)]
         return Frame(FrameType['ProbeResponse'],
-                     self.mac_addr, "*", c_text)
+                     self.mac_addr, "*", self.uid, c_text)
 
-    def __init__(self, ssid:str):
+    def __init__(self, ssid:str, uid:int):
         self.mac_addr = get_hex(6)
         self.memory = {}
         self.ssid = ssid
+        self.uid = uid
         self.key = get_key()
         assert self.key.can_encrypt()
         assert self.key.has_private()
@@ -71,7 +72,7 @@ class Station:
         self.rmac_addr = get_hex(6)
         if beacon.contents in [i[0] for i in self.saved]:
             return Frame(FrameType['ProbeRequest'],
-                         self.rmac_addr, "*", beacon.contents)
+                         self.rmac_addr, "*", self.uid, beacon.contents)
         else:
             return None
 
@@ -96,7 +97,7 @@ class Station:
         p_text = fragment(msg, 80)
         c_text = [ap_pk.encrypt(i, 32) for i in p_text]
         return Frame(FrameType['ProbeRequest'],
-                     self.rmac_addr, "*", c_text)
+                     self.rmac_addr, "*", self.uid, c_text)
 
     def verify_secure_probe_response(self, response:Frame) -> bool:
         if response.source not in self.memory:
@@ -118,7 +119,8 @@ class Station:
         self.mac_addr = next_rmac
         return True
 
-    def __init__(self):
+    def __init__(self, uid:int):
+        self.uid = uid
         self.mac_addr = get_hex(6)
         self.memory = {}
         self.saved = set()
