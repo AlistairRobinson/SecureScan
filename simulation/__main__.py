@@ -154,10 +154,10 @@ if args.t:
     if args.protocol.lower() == "secure_scan":
         time = timeit.timeit("simulate_secure_scan([])",
                             "from __main__ import simulate_secure_scan", number = 100) / 100
-    print("Average handshake time: \t\t" + str(time) + "s")
-print("Total Probe Requests:  \t\t\t" + str(len(probe_requests)))
-print("Unique Probe Requests: \t\t\t" + str(len(unique_probe_requests)))
-print("Average Jensen-Shannon distance: \t" + str(sum(js)/len(js)))
-print("Minimum Jensen-Shannon distance: \t" + str(min(js)))
-print("Std-Dev Jensen-Shannon distance: \t" + str(np.std(js)))
-print("Total message entropy: \t\t\t%d" % sum(entropies))
+    print("Average handshake time: \t\t{}s".format(time))
+print("Total Probe Requests:  \t\t\t{}".format(len(probe_requests)))
+print("Unique Probe Requests: \t\t\t{}".format(len(unique_probe_requests)))
+print("Average Jensen-Shannon distance: \t{}".format(sum(js)/len(js)))
+print("Minimum Jensen-Shannon distance: \t{}".format(min(js)))
+print("Std-Dev Jensen-Shannon distance: \t{}".format(np.std(js)))
+print("Total message entropy: \t\t\t{}".format(sum(entropies)))
