@@ -17,9 +17,10 @@ class Frame:
         self.contents = data
 
     def __str__(self):
-        return "Data frame: \t" + str(self.type) + "\n" \
-        "Sent at: \t" + str(self.sent_at) + "\n" \
-        "Source: \t" + self.source + "\n" \
-        "Destination: \t" + self.destination + "\n" \
-        "Sent by actor " + str(self.uid) + "\n" \
-        "Contents: \n" + str(self.contents)
+        return "Data frame: \t{}\n" \
+        "Sent at: \t{}\n" \
+        "Source: \t{}\n" \
+        "Destination: \t{}\n" \
+        "Sent by actor {}\n" \
+        "Contents: \n{}".format(self.type, self.sent_at,
+        self.source, self.destination, self.uid, self.contents)
