@@ -3,6 +3,8 @@ from simulation.frames import Frame, FrameType
 from typing import List
 from scipy.stats import entropy
 from scipy.spatial.distance import jensenshannon
+from sklearn.model_selection import KFold
+from sklearn.naive_bayes import GaussianNB
 from matplotlib import pyplot as plt
 import matplotlib
 import numpy as np
@@ -50,7 +52,8 @@ def simulate_standard(history:List[Frame]) -> bool:
 parser = argparse.ArgumentParser()
 parser.add_argument("-v", help = "operate simulation in verbose mode", action = 'store_true')
 parser.add_argument("-t", help = "display timing information for protocol stages", action = 'store_true')
-parser.add_argument("-p", help = "plot Shannon Entropy and Jensen-Shannon distance", action = 'store_true')
+parser.add_argument("-e", help = "analyse and plot Shannon entropy and Jensen-Shannon distance", action = 'store_true')
+parser.add_argument("-b", help = "perform Bayesian classification on probe requests", action = 'store_true')
 parser.add_argument("-n", help = "the number of iterations to perform")
 parser.add_argument("-s", help = "the number of stations to simulate")
 parser.add_argument("-a", help = "the number of access points to simulate")
@@ -93,33 +96,36 @@ for i in range(0, n):
     if args.protocol.lower() == "secure_scan":
         simulate_secure_scan(history)
 
+print("All simulations completed, no anomalies")
+
 probe_requests = [h for h in filter(lambda f: f.type == FrameType['ProbeRequest'], history)]
 unique_probe_requests = list(set([str(p.contents) for p in probe_requests]))
 
-global_dist = [[] for i in range(0, 10000)]
-local_dists = {}
+if args.e:
 
-for f in probe_requests:
-    for c in range(0, len(str(f.contents))):
-        global_dist[c].append(str(f.contents)[c])
-    values, counts = np.unique(list(str(f.contents) + string.printable), return_counts = True)
-    local_dists[str(f.sent_at)] = counts - 1
+    global_dist = [[] for i in range(0, 10000)]
+    local_dists = {}
 
-js = []
+    for f in probe_requests:
+        for c in range(0, len(str(f.contents))):
+            global_dist[c].append(str(f.contents)[c])
+        values, counts = np.unique(list(str(f.contents) + string.printable), return_counts = True)
+        local_dists[str(f.sent_at)] = counts - 1
 
-for f in range(0, len(probe_requests)):
-    for h in range(f + 1, len(probe_requests)):
-        js.append(jensenshannon(local_dists[str(probe_requests[f].sent_at)],
-                                local_dists[str(probe_requests[h].sent_at)]))
+    js = []
 
-entropies = []
-for d in global_dist:
-    if d == []:
-        continue
-    values, counts = np.unique(d, return_counts = True)
-    entropies.append(entropy(counts))
+    for f in range(0, len(probe_requests)):
+        for h in range(f + 1, len(probe_requests)):
+            js.append(jensenshannon(local_dists[str(probe_requests[f].sent_at)],
+                                    local_dists[str(probe_requests[h].sent_at)]))
 
-if args.p:
+    entropies = []
+    for d in global_dist:
+        if d == []:
+            continue
+        values, counts = np.unique(d, return_counts = True)
+        entropies.append(entropy(counts))
+
     plt.figure()
     plt.plot(entropies)
     plt.title("Probe Request Content Entropy")
@@ -147,7 +153,20 @@ if args.p:
     plt.show()
     plt.savefig("{}_{}_{}_{}_hst".format(args.protocol, s, a, n))
 
-print("All simulations completed, no anomalies")
+    print("Entropy analysis completed")
+
+X = np.array([[hash(p.source), hash(p.destination), hash(str(p.contents))] for p in probe_requests])
+y = np.array([p.uid for p in probe_requests])
+acc = []
+
+for train_i, test_i in KFold(n_splits=10).split(X):
+    X_train, X_test = X[train_i], X[test_i]
+    y_train, y_test = y[train_i], y[test_i]
+    y_pred = GaussianNB().fit(X_train, y_train).predict(X_test)
+    acc.append((y_pred == y_test).sum() / len(y_pred))
+
+print("Bayesian classification completed")
+
 if args.t:
     if args.protocol.lower() == "standard":
         time = timeit.timeit("simulate_standard([])",
@@ -158,7 +177,10 @@ if args.t:
     print("Average handshake time: \t\t\t{}s".format(time))
 print("Total Probe Requests:  \t\t\t\t{}".format(len(probe_requests)))
 print("Unique Probe Requests: \t\t\t\t{}".format(len(unique_probe_requests)))
-print("Average Jensen-Shannon distance: \t\t{}".format(sum(js)/len(js)))
-print("Minimum Jensen-Shannon distance: \t\t{}".format(min(js)))
-print("Std-Dev Jensen-Shannon distance: \t\t{}".format(np.std(js)))
-print("Total message entropy: \t\t\t\t{}".format(sum(entropies)))
+if args.e:
+    print("Average Jensen-Shannon distance: \t\t{}".format(sum(js)/len(js)))
+    print("Minimum Jensen-Shannon distance: \t\t{}".format(min(js)))
+    print("Std-Dev Jensen-Shannon distance: \t\t{}".format(np.std(js)))
+    print("Total message entropy: \t\t\t\t{}".format(sum(entropies)))
+print("Bayesian classifier accuracies: \t\t{}".format(acc))
+print("Average Bayesian classifier accuracy: \t\t{}".format(np.mean(acc)))
