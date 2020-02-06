@@ -77,10 +77,9 @@ if args.p:
     p = float(args.p)
 
 if not args.protocol or args.protocol.lower() not in ["standard", "secure_scan"]:
-    print("Using default secure_scan protocol")
     args.protocol = "secure_scan"
 
-print("Initialising {} stations...".format(s))
+print("\nInitialising {} stations...".format(s))
 stations = [Station(i) for i in progressbar.progressbar(range(s), term_width=100)]
 print("Initialising {} access points...".format(a))
 aps = [AccessPoint(''.join(random.choice(string.ascii_lowercase) for i in range(8)), i) for i in progressbar.progressbar(range(a), term_width=100)]
@@ -111,7 +110,7 @@ if args.e:
     local_dists = {}
 
     print("Beginning Shannon Entropy analysis...")
-    with progressbar.ProgressBar(max_value=10, term_width=100) as bar:
+    with progressbar.ProgressBar(max_value=len(probe_requests), term_width=100) as bar:
         progress = 0
         for f in probe_requests:
             for c in range(0, len(str(f.contents))):
@@ -197,4 +196,4 @@ if args.e:
     print("Std-Dev Jensen-Shannon distance: \t\t{}".format(np.std(js)))
     print("Total message entropy: \t\t\t\t{}".format(sum(entropies)))
 print("Bayesian classifier accuracies: \t\t{}".format(acc))
-print("Average Bayesian classifier accuracy: \t\t{}".format(np.mean(acc)))
+print("Average Bayesian classifier accuracy: \t\t{}\n".format(np.mean(acc)))
