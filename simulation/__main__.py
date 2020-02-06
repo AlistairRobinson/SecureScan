@@ -57,13 +57,14 @@ parser.add_argument("-b", help = "perform Bayesian classification on probe reque
 parser.add_argument("-n", help = "the number of iterations to perform")
 parser.add_argument("-s", help = "the number of stations to simulate")
 parser.add_argument("-a", help = "the number of access points to simulate")
+parser.add_argument("-p", help = "the probability of a station having a connection to an AP")
 parser.add_argument("--protocol", help = "the handshake protocol to use")
 args = parser.parse_args()
 
 n = 100
 s = 1
 a = 1
-p = ""
+p = 0.5
 
 if args.n:
     n = int(args.n)
@@ -71,6 +72,8 @@ if args.s:
     s = int(args.s)
 if args.a:
     a = int(args.a)
+if args.p:
+    p = float(args.p)
 
 if not args.protocol or args.protocol.lower() not in ["standard", "secure_scan"]:
     print("Using default secure_scan protocol")
@@ -80,12 +83,12 @@ stations = [Station(i) for i in range(0, s)]
 print("Initialised {} stations...".format(s))
 aps = [AccessPoint(''.join(random.choice(string.ascii_lowercase) for i in range(8)), i) for i in range(0, a)]
 print("Initialised {} access points...".format(a))
-print("Beginning simulation with {} stations, {} access points, {} repetitions".format(s, a, n))
+print("Beginning simulation with {} stations, {} access points, p = {}, n = {}".format(s, a, p, n))
 
 for station in stations:
-    for i in range(0, random.randint(0, len(aps)) + 1):
-        ap = random.choice(aps)
-        station.saved.add((ap.ssid, ap.key.publickey().exportKey()))
+    for ap in aps:
+        if p > random.random():
+            station.saved.add((ap.ssid, ap.key.publickey().exportKey()))
 
 history = []
 
