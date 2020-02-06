@@ -195,5 +195,7 @@ if args.e:
     print("Minimum Jensen-Shannon distance: \t\t{}".format(min(js)))
     print("Std-Dev Jensen-Shannon distance: \t\t{}".format(np.std(js)))
     print("Total message entropy: \t\t\t\t{}".format(sum(entropies)))
-print("Bayesian classifier accuracies: \t\t{}".format(acc))
-print("Average Bayesian classifier accuracy: \t\t{}\n".format(np.mean(acc)))
+if args.b:
+    print("Bayesian classifier accuracies: \t\t{}".format(acc))
+    print("Average Bayesian classifier accuracy: \t\t{}".format(np.mean(acc)))
+print("")
