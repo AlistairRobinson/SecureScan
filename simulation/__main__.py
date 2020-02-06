@@ -7,6 +7,7 @@ from sklearn.model_selection import KFold
 from sklearn.naive_bayes import GaussianNB
 from matplotlib import pyplot as plt
 import matplotlib
+import progressbar
 import numpy as np
 import pandas as pd
 import argparse, random, timeit, string
@@ -79,11 +80,11 @@ if not args.protocol or args.protocol.lower() not in ["standard", "secure_scan"]
     print("Using default secure_scan protocol")
     args.protocol = "secure_scan"
 
-stations = [Station(i) for i in range(0, s)]
-print("Initialised {} stations...".format(s))
-aps = [AccessPoint(''.join(random.choice(string.ascii_lowercase) for i in range(8)), i) for i in range(0, a)]
-print("Initialised {} access points...".format(a))
-print("Beginning simulation with {} stations, {} access points, p = {}, n = {}".format(s, a, p, n))
+print("Initialising {} stations...".format(s))
+stations = [Station(i) for i in progressbar.progressbar(range(s), term_width=100)]
+print("Initialising {} access points...".format(a))
+aps = [AccessPoint(''.join(random.choice(string.ascii_lowercase) for i in range(8)), i) for i in progressbar.progressbar(range(a), term_width=100)]
+print("Beginning simulation with {} stations, {} access points, p = {}, n = {}...".format(s, a, p, n))
 
 for station in stations:
     for ap in aps:
@@ -92,7 +93,7 @@ for station in stations:
 
 history = []
 
-for i in range(0, n):
+for i in progressbar.progressbar(range(n), term_width=100):
     if args.protocol.lower() == "standard":
         while not simulate_standard(history):
             pass
@@ -109,15 +110,21 @@ if args.e:
     global_dist = [[] for i in range(0, 10000)]
     local_dists = {}
 
-    for f in probe_requests:
-        for c in range(0, len(str(f.contents))):
-            global_dist[c].append(str(f.contents)[c])
-        values, counts = np.unique(list(str(f.contents) + string.printable), return_counts = True)
-        local_dists[str(f.sent_at)] = counts - 1
+    print("Beginning Shannon Entropy analysis...")
+    with progressbar.ProgressBar(max_value=10, term_width=100) as bar:
+        progress = 0
+        for f in probe_requests:
+            for c in range(0, len(str(f.contents))):
+                global_dist[c].append(str(f.contents)[c])
+            values, counts = np.unique(list(str(f.contents) + string.printable), return_counts = True)
+            local_dists[str(f.sent_at)] = counts - 1
+            progress += 1
+            bar.update(progress)
 
     js = []
 
-    for f in range(0, len(probe_requests)):
+    print("Beginning Jensen-Shannon Distance analysis...")
+    for f in progressbar.progressbar(range(len(probe_requests)), term_width=100):
         for h in range(f + 1, len(probe_requests)):
             js.append(jensenshannon(local_dists[str(probe_requests[f].sent_at)],
                                     local_dists[str(probe_requests[h].sent_at)]))
@@ -156,19 +163,23 @@ if args.e:
     plt.show()
     plt.savefig("{}_{}_{}_{}_hst".format(args.protocol, s, a, n))
 
-    print("Entropy analysis completed")
+if args.b:
+    X = np.array([[hash(p.source), hash(p.destination), hash(str(p.contents))] for p in probe_requests])
+    y = np.array([p.uid for p in probe_requests])
+    acc = []
 
-X = np.array([[hash(p.source), hash(p.destination), hash(str(p.contents))] for p in probe_requests])
-y = np.array([p.uid for p in probe_requests])
-acc = []
+    print("Training Naive Bayes classifier...")
+    with progressbar.ProgressBar(max_value=10, term_width=100) as bar:
+        progress = 0
+        for train_i, test_i in KFold(n_splits=10).split(X):
+            X_train, X_test = X[train_i], X[test_i]
+            y_train, y_test = y[train_i], y[test_i]
+            y_pred = GaussianNB().fit(X_train, y_train).predict(X_test)
+            acc.append((y_pred == y_test).sum() / len(y_pred))
+            progress += 1
+            bar.update(progress)
 
-for train_i, test_i in KFold(n_splits=10).split(X):
-    X_train, X_test = X[train_i], X[test_i]
-    y_train, y_test = y[train_i], y[test_i]
-    y_pred = GaussianNB().fit(X_train, y_train).predict(X_test)
-    acc.append((y_pred == y_test).sum() / len(y_pred))
-
-print("Bayesian classification completed")
+print("\nAnalysis complete\n")
 
 if args.t:
     if args.protocol.lower() == "standard":
