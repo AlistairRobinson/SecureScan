@@ -60,6 +60,7 @@ parser.add_argument("-s", help = "the number of stations to simulate")
 parser.add_argument("-a", help = "the number of access points to simulate")
 parser.add_argument("-p", help = "the probability of a station having a connection to an AP")
 parser.add_argument("--protocol", help = "the handshake protocol to use")
+parser.add_argument("--csv", help = "the .csv file to write results to")
 args = parser.parse_args()
 
 n = 100
@@ -199,3 +200,7 @@ if args.b:
     print("Bayesian classifier accuracies: \t\t{}".format(acc))
     print("Average Bayesian classifier accuracy: \t\t{}".format(np.mean(acc)))
 print("")
+
+if args.csv:
+    with open(args.csv, 'a') as f:
+        f.write("\n{},{},{},{},{},{},{}".format(args.protocol, n, s, a, p, len(unique_probe_requests), np.mean(acc)))
