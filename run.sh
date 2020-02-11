@@ -1,3 +1,4 @@
+set -e
 for protocol in "secure_scan" "standard"
 do
     for s in 10 100 1000 10000
