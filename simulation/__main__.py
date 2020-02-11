@@ -90,6 +90,9 @@ for station in stations:
     for ap in aps:
         if p > random.random():
             station.saved.add((ap.ssid, ap.key.publickey().exportKey()))
+    if len(station.saved) == 0:
+        ap = random.choice(aps)
+        station.saved.add((ap.ssid, ap.key.publickey().exportKey()))
 
 history = []
 
