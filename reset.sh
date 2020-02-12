@@ -1,1 +1,0 @@
-echo "Protocol,Iterations,Stations,Access Points,p,Unique Probe Requests,Classifier Accuracy" > results.csv
