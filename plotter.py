@@ -15,9 +15,9 @@ def construct_axis(a, zmin, zmax, xl, yl, zl, t):
     a.set_zlabel(zl)
     a.set_title(t)
 
-def plot_classifier_results():
+def plot_classifier_results(f):
 
-    data = pd.read_csv('classifier_results.csv')
+    data = pd.read_csv(f)
 
     data['id'] = data['acc'] * data['s']
     secure_scan = data[data['protocol'] == 'secure_scan']
@@ -88,6 +88,19 @@ def plot_classifier_results():
                          [1, 1, 1, 1], color=(1, 1, 1, 0.1))
 
     construct_axis(main_ax, 0, 1000, 'log(s)', 'log(a)', 'acc', "Device Identifiability on log(s) and log(a)")
-    plt.show()
 
-plot_classifier_results()
+def plot_time_results(f):
+
+    data = pd.read_csv(f)
+    plt.figure()
+    main_ax = plt.axes(projection='3d')
+
+    main_ax.plot_trisurf(np.log(data['s']), np.log(data['a']), data['standard_t'], color=(1, 0, 0, 0.75))
+    main_ax.plot_trisurf(np.log(data['s']), np.log(data['a']), data['secure_scan_t'], color=(0, 1, 0, 0.75))
+
+    construct_axis(main_ax, 0, 0.3, 'log(s)', 'log(a)', 't', "Handshake Completion Time on log(s) and log(a)")
+
+plot_classifier_results('classifier_results.csv')
+plot_time_results('time_results.csv')
+
+plt.show()
