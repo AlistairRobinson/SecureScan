@@ -100,8 +100,8 @@ def plot_time_results(f):
 
     construct_axis(main_ax, 0, 0.3, 'log(s)', 'log(a)', 't', "Handshake Completion Time on log(s) and log(a)")
 
-plot_classifier_results('classifier_results.csv')
-plot_time_results('time_results.csv')
+plot_classifier_results('results/classifier_results.csv')
+plot_time_results('results/time_results.csv')
 
 for deg in range(0, 360):
     for i in plt.get_fignums():
