@@ -17,6 +17,7 @@ a = int(args.a) if args.a else 1
 p = float(args.p) if args.p else 1
 protocol = args.protocol.lower() if args.protocol and args.protocol.lower() in supported_protocols else "secure_scan"
 
+print("")
 print("Initialising {} stations...".format(s))
 stations = get_stations(s)
 print("Initialising {} access points...".format(a))
