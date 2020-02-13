@@ -4,6 +4,7 @@ from Crypto.Hash import SHA256
 from Crypto.PublicKey.RSA import _RSAobj
 from Crypto.PublicKey import RSA
 from typing import List
+from string import ascii_lowercase
 import os, binascii, json, random, time
 
 def get_hex(i:int) -> str:
@@ -11,6 +12,9 @@ def get_hex(i:int) -> str:
 
 def get_key() -> _RSAobj:
     return RSA.generate(1024, Random.new().read)
+
+def get_ssid() -> str:
+    return ''.join(random.choice(ascii_lowercase) for i in range(8))
 
 def fragment(l:List[bytes], n:int) -> List[List[bytes]]:
     return [l[i * n:(i + 1) * n] for i in range((len(l) + n - 1) // n)]
@@ -43,12 +47,12 @@ class AccessPoint:
         return Frame(FrameType['ProbeResponse'],
                      self.mac_addr, "*", self.uid, c_text)
 
-    def __init__(self, ssid:str, uid:int):
+    def __init__(self, uid:int, ssid:str=None):
         self.mac_addr = get_hex(6)
         self.memory = {}
-        self.ssid = ssid
         self.uid = uid
         self.key = get_key()
+        self.ssid = ssid if ssid else get_ssid()
         assert self.key.can_encrypt()
         assert self.key.has_private()
         assert self.key.can_sign()

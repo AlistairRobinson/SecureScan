@@ -7,8 +7,8 @@ do
         do
             for p in 0.0001 0.001 0.01 0.1
             do
-                echo "python3 -m simulation --csv results.csv -n 10000 -b --protocol $protocol -s $s -a $a -p $p"
-                python3 -m simulation --csv results.csv -n 10000 -b --protocol $protocol -s $s -a $a -p $p
+                echo "python3 -m simulation --csv results.csv -n 10000 --protocol $protocol -s $s -a $a -p $p"
+                python3 -m simulation --csv results.csv -n 10000 --protocol $protocol -s $s -a $a -p $p
             done
         done
     done
