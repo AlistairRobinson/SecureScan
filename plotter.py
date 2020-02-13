@@ -103,4 +103,10 @@ def plot_time_results(f):
 plot_classifier_results('classifier_results.csv')
 plot_time_results('time_results.csv')
 
-plt.show()
+for deg in range(0, 360):
+    for i in plt.get_fignums():
+        f = plt.figure(i)
+        for ax in f.get_axes():
+            ax.view_init(30, deg)
+    plt.draw()
+    plt.pause(.00001)
