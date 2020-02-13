@@ -8,89 +8,86 @@ import math
 pd.options.mode.chained_assignment = None
 pd.set_option('display.max_rows', None)
 
-data = pd.read_csv('results.csv')
+def construct_axis(a, zmin, zmax, xl, yl, zl, t):
+    a.set_zlim3d(zmin, zmax)
+    a.set_xlabel(xl)
+    a.set_ylabel(yl)
+    a.set_zlabel(zl)
+    a.set_title(t)
 
-data['id'] = data['acc'] * data['s']
-secure_scan = data[data['protocol'] == 'secure_scan']
-standard = data[data['protocol'] == 'standard']
+def plot_classifier_results():
 
-secure_scan = secure_scan.merge(secure_scan.groupby(['a', 'p'], as_index=False)['id'].mean(), on=['a', 'p'], suffixes=(('', '_mean')))
-standard = standard.merge(standard.groupby(['a', 'p'], as_index=False)['id'].mean(), on=['a', 'p'], suffixes=(('', '_mean')))
+    data = pd.read_csv('classifier_results.csv')
 
-plt.figure()
-ax = plt.axes(projection='3d')
-fig = plt.figure()
+    data['id'] = data['acc'] * data['s']
+    secure_scan = data[data['protocol'] == 'secure_scan']
+    standard = data[data['protocol'] == 'standard']
 
-c = [1, 0.75, 0.5, 0.25]
-p = [0.1, 0.01, 0.001, 0.0001]
+    secure_scan = secure_scan.merge(secure_scan.groupby(['a', 'p'], as_index=False)['id'].mean(), on=['a', 'p'], suffixes=(('', '_mean')))
+    standard = standard.merge(standard.groupby(['a', 'p'], as_index=False)['id'].mean(), on=['a', 'p'], suffixes=(('', '_mean')))
 
-for i in range(len(p)):
+    c = [1, 0.75, 0.5, 0.25]
+    p = [0.1, 0.01, 0.001, 0.0001]
 
-    an = fig.add_subplot(2, 2, i + 1, projection='3d')
+    plt.figure()
+    main_ax = plt.axes(projection='3d')
+    sub_ax = {}
+    fig = plt.figure()
 
-    d = secure_scan[secure_scan['p'] == p[i]]
-    ax.plot_trisurf(np.log(d['s']), np.log(d['a']), d['acc'], color=(0, 1, c[i], 0.45))
-    an.plot_trisurf(np.log(d['s']), np.log(d['a']), d['acc'], color=(0, 1, c[i], 0.45))
+    for i in range(len(p)):
 
-    d = standard[standard['p'] == p[i]]
-    ax.plot_trisurf(np.log(d['s']), np.log(d['a']), d['acc'], color=(1, 0, c[i], 0.45))
-    an.plot_trisurf(np.log(d['s']), np.log(d['a']), d['acc'], color=(1, 0, c[i], 0.45))
+        sub_ax[i] = fig.add_subplot(2, 2, i + 1, projection='3d')
 
-    an.plot_trisurf(np.log([10, 10, 100, 100, 1000, 1000, 10000, 10000]),
-                np.log([10, 10000, 10, 10000, 10, 10000, 10, 10000]),
-                [1/10, 1/10, 1/100, 1/100, 1/1000, 1/1000, 1/10000, 1/10000],
-                color=(1, 1, 1, 0.1))
+        d = secure_scan[secure_scan['p'] == p[i]]
+        main_ax.plot_trisurf(np.log(d['s']), np.log(d['a']), d['acc'], color=(0, 1, c[i], 0.45))
+        sub_ax[i].plot_trisurf(np.log(d['s']), np.log(d['a']), d['acc'], color=(0, 1, c[i], 0.45))
 
-    an.set_zlim3d(0, 1)
-    an.set_xlabel('log(s)')
-    an.set_ylabel('log(a)')
-    an.set_zlabel('acc')
-    an.set_title("Classifier Accuracy on log(s) and log(a) (p = {})".format(p[i]))
+        d = standard[standard['p'] == p[i]]
+        main_ax.plot_trisurf(np.log(d['s']), np.log(d['a']), d['acc'], color=(1, 0, c[i], 0.45))
+        sub_ax[i].plot_trisurf(np.log(d['s']), np.log(d['a']), d['acc'], color=(1, 0, c[i], 0.45))
 
-ax.plot_trisurf(np.log([10, 10, 100, 100, 1000, 1000, 10000, 10000]),
-                np.log([10, 10000, 10, 10000, 10, 10000, 10, 10000]),
-                [1/10, 1/10, 1/100, 1/100, 1/1000, 1/1000, 1/10000, 1/10000],
-                color=(1, 1, 1, 0.1))
+        sub_ax[i].plot_trisurf(np.log([10, 10, 100, 100, 1000, 1000, 10000, 10000]),
+                               np.log([10, 10000, 10, 10000, 10, 10000, 10, 10000]),
+                               [1/10, 1/10, 1/100, 1/100, 1/1000, 1/1000, 1/10000, 1/10000],
+                               color=(1, 1, 1, 0.1))
 
-ax.set_zlim3d(0, 1)
-ax.set_xlabel('log(s)')
-ax.set_ylabel('log(a)')
-ax.set_zlabel('acc')
-ax.set_title("Classifier Accuracy on log(s) and log(a)")
+        construct_axis(sub_ax[i], 0, 1, 'log(s)', 'log(a)', 'acc', "Classifier Accuracy on log(s) and log(a) (p = {})".format(p[i]))
 
-plt.figure()
-ax = plt.axes(projection='3d')
-fig = plt.figure()
+    main_ax.plot_trisurf(np.log([10, 10, 100, 100, 1000, 1000, 10000, 10000]),
+                         np.log([10, 10000, 10, 10000, 10, 10000, 10, 10000]),
+                         [1/10, 1/10, 1/100, 1/100, 1/1000, 1/1000, 1/10000, 1/10000],
+                         color=(1, 1, 1, 0.1))
 
-for i in range(len(p)):
+    construct_axis(main_ax, 0, 1, 'log(s)', 'log(a)', 'acc', "Classifier Accuracy on log(s) and log(a)")
 
-    an = fig.add_subplot(2, 2, i + 1, projection='3d')
+    plt.figure()
+    main_ax = plt.axes(projection='3d')
+    sub_ax = {}
+    fig = plt.figure()
 
-    d = secure_scan[secure_scan['p'] == p[i]]
-    ax.plot_trisurf(np.log(d['s']), np.log(d['a']), d['id'], color=(0, 1, c[i], 0.45))
-    an.plot_trisurf(np.log(d['s']), np.log(d['a']), d['id'], color=(0, 1, c[i], 0.45))
+    for i in range(len(p)):
 
-    d = standard[standard['p'] == p[i]]
-    ax.plot_trisurf(np.log(d['s']), np.log(d['a']), d['id'], color=(1, 0, c[i], 0.45))
-    an.plot_trisurf(np.log(d['s']), np.log(d['a']), d['id'], color=(1, 0, c[i], 0.45))
+        sub_ax[i] = fig.add_subplot(2, 2, i + 1, projection='3d')
 
-    an.plot_trisurf(np.log([10, 10, 10000, 10000]),
-                np.log([10, 10000, 10, 10000]),
-                [1, 1, 1, 1], color=(1, 1, 1, 0.1))
+        d = secure_scan[secure_scan['p'] == p[i]]
+        main_ax.plot_trisurf(np.log(d['s']), np.log(d['a']), d['id'], color=(0, 1, c[i], 0.45))
+        sub_ax[i].plot_trisurf(np.log(d['s']), np.log(d['a']), d['id'], color=(0, 1, c[i], 0.45))
 
-    an.set_zlim3d(0, 1000)
-    an.set_xlabel('log(s)')
-    an.set_ylabel('log(a)')
-    an.set_zlabel('s * acc')
-    an.set_title("Device Identifiability on log(s) and log(a) (p = {})".format(p[i]))
+        d = standard[standard['p'] == p[i]]
+        main_ax.plot_trisurf(np.log(d['s']), np.log(d['a']), d['id'], color=(1, 0, c[i], 0.45))
+        sub_ax[i].plot_trisurf(np.log(d['s']), np.log(d['a']), d['id'], color=(1, 0, c[i], 0.45))
 
-ax.plot_trisurf(np.log([10, 10, 10000, 10000]),
-                np.log([10, 10000, 10, 10000]),
-                [1, 1, 1, 1], color=(1, 1, 1, 0.1))
+        sub_ax[i].plot_trisurf(np.log([10, 10, 10000, 10000]),
+                               np.log([10, 10000, 10, 10000]),
+                               [1, 1, 1, 1], color=(1, 1, 1, 0.1))
 
-ax.set_zlim3d(0, 1000)
-ax.set_xlabel('log(s)')
-ax.set_ylabel('log(a)')
-ax.set_zlabel('s * acc')
-ax.set_title("Device Identifiability on log(s) and log(a)")
-plt.show()
+        construct_axis(sub_ax[i], 0, 1000, 'log(s)', 'log(a)', 'acc', "Device Identifiability on log(s) and log(a) (p = {})".format(p[i]))
+
+    main_ax.plot_trisurf(np.log([10, 10, 10000, 10000]),
+                         np.log([10, 10000, 10, 10000]),
+                         [1, 1, 1, 1], color=(1, 1, 1, 0.1))
+
+    construct_axis(main_ax, 0, 1000, 'log(s)', 'log(a)', 'acc', "Device Identifiability on log(s) and log(a)")
+    plt.show()
+
+plot_classifier_results()
