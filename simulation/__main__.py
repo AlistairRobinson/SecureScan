@@ -1,5 +1,6 @@
 from simulation.actors import Station, AccessPoint
 from simulation.frames import Frame, FrameType
+from simulation.parser import construct_parser
 from typing import List
 from scipy.stats import entropy
 from scipy.spatial.distance import jensenshannon
@@ -10,7 +11,7 @@ import matplotlib
 import progressbar
 import numpy as np
 import pandas as pd
-import argparse, random, timeit, string
+import random, timeit, string
 
 def simulate_secure_scan(history:List[Frame]) -> bool:
     st = random.choice(stations)
@@ -50,18 +51,7 @@ def simulate_standard(history:List[Frame]) -> bool:
             print(response)
         return True
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-v", help = "operate simulation in verbose mode", action = 'store_true')
-parser.add_argument("-t", help = "display timing information for protocol stages", action = 'store_true')
-parser.add_argument("-e", help = "analyse and plot Shannon entropy and Jensen-Shannon distance", action = 'store_true')
-parser.add_argument("-b", help = "perform Bayesian classification on probe requests", action = 'store_true')
-parser.add_argument("-n", help = "the number of iterations to perform")
-parser.add_argument("-s", help = "the number of stations to simulate")
-parser.add_argument("-a", help = "the number of access points to simulate")
-parser.add_argument("-p", help = "the probability of a station having a connection to an AP")
-parser.add_argument("--protocol", help = "the handshake protocol to use")
-parser.add_argument("--csv", help = "the .csv file to write results to")
-args = parser.parse_args()
+args = construct_parser().parse_args()
 
 n = 100
 s = 1
