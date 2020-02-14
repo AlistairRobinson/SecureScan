@@ -111,13 +111,13 @@ def plot_classifier_results(fname: str):
                              baseline_z, color=(1, 1, 1, 0.1))
 
         t = "Device Identifiability on log(s) and log(a) (p = {})".format(p[i])
-        construct_axis(s_ax[i], 0, 1000, 'log(s)', 'log(a)', 'acc', t)
+        construct_axis(s_ax[i], 0, 1000, 'log(s)', 'log(a)', 'acc * s', t)
 
     main_ax.plot_trisurf(np.log(baseline_x), np.log(baseline_y),
                          baseline_z, color=(1, 1, 1, 0.1))
 
     t = "Device Identifiability on log(s) and log(a)"
-    construct_axis(main_ax, 0, 1000, 'log(s)', 'log(a)', 'acc', t)
+    construct_axis(main_ax, 0, 1000, 'log(s)', 'log(a)', 'acc * s', t)
 
 def plot_time_results(fname: str):
     """ Plots the timing results stored in a file `fname`

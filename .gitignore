@@ -3,3 +3,4 @@
 *.pyc
 *.png
 pylintrc
+.ipynb_checkpoints
