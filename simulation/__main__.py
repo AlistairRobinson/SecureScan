@@ -26,16 +26,18 @@ def main():
     stations = sim.get_stations(s)
     print("Initialising {} access points...".format(a))
     aps = sim.get_access_points(a)
-    print("Beginning simulation with {} stations, {} access points, " \
-          "p = {}, n = {}...".format(s, a, p, n))
-
-    for station in stations:
+    print("Associating stations and access points with p = {}...".format(p))
+    for i in pb.progressbar(range(len(stations)), term_width=100):
+        station = stations[i]
         for ap in aps:
             if p > random.random():
                 station.saved.add((ap.ssid, ap.key.publickey().exportKey()))
         if len(station.saved) == 0:
             ap = random.choice(aps)
             station.saved.add((ap.ssid, ap.key.publickey().exportKey()))
+
+    print("Beginning simulation with {} stations, {} access points, " \
+          "p = {}, n = {}...".format(s, a, p, n))
 
     history = []
     duration = 0
