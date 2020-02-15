@@ -5,6 +5,10 @@ plot.plot_classifier_results('results/classifier_results.csv')
 plot.plot_upr_results('results/classifier_results.csv')
 plot.plot_time_results('results/time_results.csv')
 
+plt.tight_layout()
+plt.show()
+
+"""
 for deg in range(0, 360):
     for i in plt.get_fignums():
         f = plt.figure(i)
@@ -12,3 +16,4 @@ for deg in range(0, 360):
             ax.view_init(30, deg)
     plt.draw()
     plt.pause(.00001)
+"""
