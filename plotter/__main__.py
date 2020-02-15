@@ -2,6 +2,7 @@ from matplotlib import pyplot as plt
 from plotter import plot
 
 plot.plot_classifier_results('results/classifier_results.csv')
+plot.plot_upr_results('results/classifier_results.csv')
 plot.plot_time_results('results/time_results.csv')
 
 for deg in range(0, 360):

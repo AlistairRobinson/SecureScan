@@ -1,4 +1,4 @@
-protocol,n,s,a,p,unique_probe_requests,acc
+protocol,n,s,a,p,upr,acc
 secure_scan,10000,10,10,0.0001,10000,0.10570000000000002
 secure_scan,10000,10,10,0.001,10000,0.099
 secure_scan,10000,10,10,0.01,10000,0.0945

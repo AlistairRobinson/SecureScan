@@ -37,13 +37,6 @@ def plot_classifier_results(fname: str):
     secure_scan = data[data['protocol'] == 'secure_scan']
     standard = data[data['protocol'] == 'standard']
 
-    secure_scan_grouped = secure_scan.groupby(['a', 'p'], as_index=False)
-    secure_scan = secure_scan.merge(secure_scan_grouped['id'].mean(),
-                                    on=['a', 'p'], suffixes=(('', '_mean')))
-    standard_grouped = standard.groupby(['a', 'p'], as_index=False)
-    standard = standard.merge(standard_grouped['id'].mean(),
-                              on=['a', 'p'], suffixes=(('', '_mean')))
-
     c = [1, 0.75, 0.5, 0.25]
     p = [0.1, 0.01, 0.001, 0.0001]
 
@@ -118,6 +111,58 @@ def plot_classifier_results(fname: str):
 
     t = "Device Identifiability on log(s) and log(a)"
     construct_axis(main_ax, 0, 1000, 'log(s)', 'log(a)', 'acc * s', t)
+
+def plot_upr_results(fname: str):
+    """ Plots the unique probe request results stored in a file `fname`
+
+    Args:
+        fname (str): The name of a `.csv` file containing upr results
+    """
+    data = pd.read_csv(fname)
+
+    data['id'] = data['acc'] * data['s']
+    secure_scan = data[data['protocol'] == 'secure_scan']
+    standard = data[data['protocol'] == 'standard']
+
+    c = [1, 0.75, 0.5, 0.25]
+    p = [0.1, 0.01, 0.001, 0.0001]
+
+    baseline_x = [10, 10, 10000, 10000]
+    baseline_y = [10, 10000, 10, 10000]
+    baseline_z = [10000, 10000, 10000, 10000]
+
+    plt.figure()
+    main_ax = plt.axes(projection='3d')
+    s_ax = {}
+    fig = plt.figure()
+
+    for i in range(len(p)):
+
+        s_ax[i] = fig.add_subplot(2, 2, i + 1, projection='3d')
+
+        d = secure_scan[secure_scan['p'] == p[i]]
+        main_ax.plot_trisurf(np.log(d['s']), np.log(d['a']),
+                             np.log(d['upr']), color=(0, 1, c[i], 0.45))
+        s_ax[i].plot_trisurf(np.log(d['s']), np.log(d['a']),
+                             np.log(d['upr']), color=(0, 1, c[i], 0.45))
+
+        d = standard[standard['p'] == p[i]]
+        main_ax.plot_trisurf(np.log(d['s']), np.log(d['a']),
+                             np.log(d['upr']), color=(1, 0, c[i], 0.45))
+        s_ax[i].plot_trisurf(np.log(d['s']), np.log(d['a']),
+                             np.log(d['upr']), color=(1, 0, c[i], 0.45))
+
+        s_ax[i].plot_trisurf(np.log(baseline_x), np.log(baseline_y),
+                             baseline_z, color=(1, 1, 1, 0.1))
+
+        t = "Unique Probe Requests on log(s) and log(a) (p = {})".format(p[i])
+        construct_axis(s_ax[i], 0, 10, 'log(s)', 'log(a)', 'upr', t)
+
+    main_ax.plot_trisurf(np.log(baseline_x), np.log(baseline_y),
+                         np.log(baseline_z), color=(1, 1, 1, 0.1))
+
+    t = "Unique Probe Requests on log(s) and log(a)"
+    construct_axis(main_ax, 0, 10, 'log(s)', 'log(a)', 'upr', t)
 
 def plot_time_results(fname: str):
     """ Plots the timing results stored in a file `fname`
