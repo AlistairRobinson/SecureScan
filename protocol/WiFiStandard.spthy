@@ -143,8 +143,8 @@ lemma Station_Privacy:
 */
 lemma Station_Handshake:
   "
-    ( All S k #i. Handshake(S, k) @ #i      // For all completed handshakes
-       ==> (Ex #a. ProbeResponse(S, k) @ a)     // a probe request must exist
+    ( All S k #i. Handshake(S, k) @ #i       // For all completed handshakes
+       ==> (Ex #a. ProbeResponse(S, k) @ a)  // a probe request must exist
     )
   "
 

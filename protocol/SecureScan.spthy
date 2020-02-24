@@ -190,7 +190,7 @@ lemma Station_Handshake_Injectivity:
     ( All S k #i #j. Handshake(S, k) @ #i       // For all completed handshakes
       & Signature(S, k, true) @ #j              // with valid signatures
        ==>                                      // it follows that...
-       ( (Ex #a. ProbeResponse(S, pk(k)) @ a    // a probe request must exist
+       ( (Ex #a. ProbeResponse(S, pk(k)) @ a    // a probe response must exist
            & (All #j. Handshake(S, k) @ #j      // and no other probe request
               ==> #i = #j)                      // uses the same key
        )
