@@ -148,13 +148,28 @@ lemma Station_Key_Secrecy:
     )
   "
 
-/*  Station_Handshake
+/*  Station_Public_Key_Secrecy
+    A lemma which enforces that an adversary cannot know the secret key `k` of
+    a station `S` without explicitly performing an `SKReveal` action fact
+*/
+lemma Station_Public_Key_Secrecy:
+  "
+    not(                                // it is not possible
+      Ex S k #i #j #k.                  // for any station `S` and a key `k`
+        Handshake(S, k) @ #i            // to perform a successful handshake
+        & K(pk(k)) @ #j                 // where the adversary knows `k`
+        & Signature(S, k, true) @ #k    // and the signature provided was valid
+        & not(Ex #r. SKReveal(S) @ r)   // where the adversary did not "cheat"
+    )
+  "
+
+/*  Station_Handshake_Validity
     A lemma which enforces that a station `S` cannot perform a handshake with
     an access point without having interacted with an honest access point,
     resulting in a probe response, or without having its secret key revealed
     before the handshake was performed
 */
-lemma Station_Handshake:
+lemma Station_Handshake_Validity:
   "
     ( All S k #i #j. Handshake(S, k) @ #i       // For all completed handshakes
       & Signature(S, k, true) @ #j              // with valid signatures
@@ -164,6 +179,7 @@ lemma Station_Handshake:
        )
     )
   "
+
 /*  Station_Handshake_Injectivity
     A lemma which enforces the same constraints as `Station_Handshake` with
     the additional constraint that no two handshakes were performed with the
@@ -182,6 +198,7 @@ lemma Station_Handshake_Injectivity:
        )
     )
   "
+
 /*  Station_Access
     A lemma that enforces that the protocol does not vacuously satisfy
     the above lemmas by enforcing that a station must be able to perform
