@@ -145,8 +145,7 @@ lemma Station_Handshake:
   "
     ( All S k #i. Handshake(S, k) @ #i      // For all completed handshakes
        ==>                                  // it follows that...
-       ( (Ex #a. ProbeResponse(S, k) @ a)   // a probe request must exist
-       )
+       (Ex #a. ProbeResponse(S, k) @ a)   // a probe request must exist
     )
   "
 
