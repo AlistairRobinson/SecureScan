@@ -15,7 +15,7 @@ def main():
     n = int(args.n) if args.n else 10
     s = int(args.s) if args.s else 1
     a = int(args.a) if args.a else 1
-    p = float(args.p) if args.p else 1
+    p = float(args.p) if args.p else 1 / a
     if args.protocol and args.protocol.lower() in ["standard", "secure_scan"]:
         protocol = args.protocol.lower()
     else:
@@ -63,6 +63,7 @@ def main():
 
     print("Training Naive Bayes classifier...")
     acc = sim.train_classifier(x, y, 10)
+    improvement = 100 * s * (np.mean(acc) - (1 / s))
 
     print("\nAnalysis complete\n")
 
@@ -71,6 +72,7 @@ def main():
     print("Average handshake time: \t\t\t{}s".format(duration / n))
     print("Bayesian classifier accuracies: \t\t{}".format(acc))
     print("Average Bayesian classifier accuracy: \t\t{}".format(np.mean(acc)))
+    print("Improvement over guessing randomly: \t\t{}%".format(improvement))
     print("")
 
     if args.csv:
