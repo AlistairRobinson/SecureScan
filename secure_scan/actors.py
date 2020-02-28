@@ -16,11 +16,20 @@ class AccessPoint:
     Attributes:
         get_addr (Callable): A function which returns an address (e.g. MAC)
         ssid (str):          The AP's SSID, or human readable identifier
-        addr (str):          The AP's global MAC address for sending data frames
+        addr (str):          The AP's global MAC address for sending frames
         key (RsaKey):        The AP's key object for asymmetric encryption
         memory (Dict):       The AP's long term memory
         uid (int):           The AP's unique identifier in the simulation
     """
+
+    def __init__(self, ssid: str = None, get_addr: Callable = get_mac):
+        self.get_addr = get_addr()
+        self.memory = {}
+        self.key = get_key()
+        self.ssid = ssid if ssid else get_ssid()
+        assert self.key.can_encrypt()
+        assert self.key.has_private()
+        assert self.key.can_sign()
 
     def send_beacon(self) -> Frame:
         """ Returns a SecureScan Beacon frame sent by the AP
@@ -53,15 +62,6 @@ class AccessPoint:
         c_text = [PKCS1_OAEP.new(st_pk).encrypt(i) for i in fragment(m, 80)]
         return Frame(FrameType['ProbeResponse'], self.get_addr, "*", c_text)
 
-    def __init__(self, ssid: str = None, get_addr: Callable = get_mac):
-        self.get_addr = get_addr()
-        self.memory = {}
-        self.key = get_key()
-        self.ssid = ssid if ssid else get_ssid()
-        assert self.key.can_encrypt()
-        assert self.key.has_private()
-        assert self.key.can_sign()
-
     def __str__(self):
         return "Access Point: \t{}\n" \
         "Global MAC address: \t{}\n" \
@@ -76,14 +76,25 @@ class Station:
 
     Attributes:
         get_addr (Callable): A function which returns an address (e.g. MAC)
-        addr (str):          The STA's global MAC address for sending data frames
-        r_addr (str):        The STA's random MAC address for sending data frames
+        addr (str):          The STA's global MAC address for sending frames
+        r_addr (str):        The STA's random MAC address for sending frames
         key (RsaKey):        The STA's key object for asymmetric encryption
         memory (Dict):       The STA's long term memory
-        timeout (int):       The time taken before responding to subsequent beacons
+        timeout (int):       The time taken before ignoring repeated beacons
+        maxsleep (int):      The maximum delay used to avoid fingerprinting
         saved (Set):         The set of all AP SSIDs and keys saved by the STA
         uid (int):           The STA's unique identifier in the simulation
     """
+
+    def __init__(self, get_addr: Callable = get_mac, timeout: int = 1, maxsleep: int = 100):
+        self.get_addr = get_addr
+        self.addr = self.get_addr()
+        self.r_addr = self.get_addr
+        self.timeout = timeout
+        self.maxsleep = maxsleep
+        self.memory = {}
+        self.saved = set()
+        self.refresh()
 
     def refresh(self):
         """ Refreshes a STA's `r_addr` and `key` to new values
@@ -112,7 +123,7 @@ class Station:
         if beacon.source in self.memory:
             if time.time() - self.memory[beacon.source]['time'] < 1:
                 return None
-        time.sleep(random.randint(1, 100) / 1000)
+        time.sleep(random.randint(1, self.maxsleep) / 1000)
         self.refresh()
         ap_pk = RSA.importKey(beacon.contents)
         next_rmac = self.get_addr()
@@ -159,15 +170,6 @@ class Station:
             return False
         self.get_addr = next_rmac
         return True
-
-    def __init__(self, get_addr: Callable = get_mac, timeout: int = 1):
-        self.get_addr = get_addr
-        self.addr = self.get_addr()
-        self.r_addr = self.get_addr
-        self.timeout = timeout
-        self.memory = {}
-        self.saved = set()
-        self.refresh()
 
     def __str__(self):
         return "Station: \t\n" \
