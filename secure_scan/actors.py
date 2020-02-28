@@ -4,6 +4,7 @@ import random
 from typing import Callable
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
+from Crypto.PublicKey.RSA import RsaKey
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.Signature import pkcs1_15
 from secure_scan.frames import Frame, FrameType
@@ -52,7 +53,7 @@ class AccessPoint:
         c_text = [PKCS1_OAEP.new(st_pk).encrypt(i) for i in fragment(m, 80)]
         return Frame(FrameType['ProbeResponse'], self.get_addr, "*", c_text)
 
-    def __init__(self, ssid: str = None, get_addr: Callable = get_mac()):
+    def __init__(self, ssid: str = None, get_addr: Callable = get_mac):
         self.get_addr = get_addr()
         self.memory = {}
         self.key = get_key()
@@ -93,7 +94,13 @@ class Station:
         assert self.key.has_private()
         assert self.key.can_sign()
 
-    def send_secure_probe_request(self, beacon: Frame) -> Frame:
+    def save_ap(self, ap: AccessPoint):
+        self.saved.add((ap.ssid, ap.key.publickey().exportKey()))
+
+    def save_ssid_pk(self, ssid: str, ap_pk: RsaKey):
+        self.saved.add((ssid, ap_pk.exportKey()))
+
+    def send_probe_request(self, beacon: Frame) -> Frame:
         """ Returns a SecureScan Probe Response frame given a Beacon
 
         Args:
@@ -123,7 +130,7 @@ class Station:
         c_text = [PKCS1_OAEP.new(ap_pk).encrypt(i) for i in p_text]
         return Frame(FrameType['ProbeRequest'], self.r_addr, "*", c_text)
 
-    def verify_secure_probe_response(self, response: Frame) -> bool:
+    def verify_probe_response(self, response: Frame) -> bool:
         """ Determines a SecureScan Probe Response frame's validity
 
         Args:
@@ -153,9 +160,9 @@ class Station:
         self.get_addr = next_rmac
         return True
 
-    def __init__(self, get_addr: Callable = get_mac(), timeout: int = 1):
+    def __init__(self, get_addr: Callable = get_mac, timeout: int = 1):
         self.get_addr = get_addr
-        self.get_addr = self.get_addr()
+        self.addr = self.get_addr()
         self.r_addr = self.get_addr
         self.timeout = timeout
         self.memory = {}
