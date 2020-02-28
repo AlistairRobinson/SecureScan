@@ -1,0 +1,169 @@
+import json
+import time
+import random
+from typing import Callable
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
+from secure_scan.frames import Frame, FrameType
+from secure_scan.utils import get_mac, get_key, get_ssid, fragment
+
+class AccessPoint:
+    """ Represents an Access Point (AP) in a WiFi network
+
+    Attributes:
+        get_addr (Callable): A function which returns an address (e.g. MAC)
+        ssid (str):          The AP's SSID, or human readable identifier
+        addr (str):          The AP's global MAC address for sending data frames
+        key (_RSAobj):       The AP's key object for asymmetric encryption
+        memory (Dict):       The AP's long term memory
+        uid (int):           The AP's unique identifier in the simulation
+    """
+
+    def send_beacon(self) -> Frame:
+        """ Returns a SecureScan Beacon frame sent by the AP
+
+        Returns:
+            Frame: The SecureScan Beacon frame sent
+        """
+        return Frame(FrameType['Beacon'], self.get_addr, "*",
+                     self.key.publickey().exportKey())
+
+    def send_probe_response(self, request: Frame) -> Frame:
+        """ Returns a SecureScan Probe Response frame given a Probe Request
+
+        Args:
+            request (Frame): The SecureScan Probe Request to respond to
+
+        Returns:
+            Frame: The SecureScan Probe Response frame sent in response
+        """
+        msg = [self.key.decrypt(i) for i in request.contents]
+        p_text = json.loads(bytes([b for s in msg for b in s]).decode('utf-8'))
+        st_pk_exp = p_text['st_pk'][2:-1].replace('\\n', '\n').encode('utf-8')
+        st_pk = RSA.importKey(st_pk_exp)
+        self.memory[p_text['next_rmac']] = time.time()
+        signature = str(self.key.sign(SHA256.new(st_pk_exp).digest(), 32)[0])
+        message = bytes(json.dumps({
+            "ssid": self.ssid,
+            "signature": signature
+        }), 'utf-8')
+        c_text = [st_pk.encrypt(i, 32) for i in fragment(message, 80)]
+        return Frame(FrameType['ProbeResponse'], self.get_addr, "*", c_text)
+
+    def __init__(self, ssid: str = None, get_addr: Callable = get_mac()):
+        self.get_addr = get_addr()
+        self.memory = {}
+        self.key = get_key()
+        self.ssid = ssid if ssid else get_ssid()
+        assert self.key.can_encrypt()
+        assert self.key.has_private()
+        assert self.key.can_sign()
+
+    def __str__(self):
+        return "Access Point: \t{}\n" \
+        "Global MAC address: \t{}\n" \
+        "Public key: \n{}\n" \
+        "Private key: \n{}" \
+        "".format(self.ssid, self.get_addr,
+                  self.key.publickey().exportKey().decode('utf-8'),
+                  self.key.exportKey().decode('utf-8'))
+
+class Station:
+    """ Represents a Station (STA) in a WiFi network
+
+    Attributes:
+        get_addr (Callable): A function which returns an address (e.g. MAC)
+        addr (str):          The STA's global MAC address for sending data frames
+        r_addr (str):        The STA's random MAC address for sending data frames
+        key (_RSAobj):       The STA's key object for asymmetric encryption
+        memory (Dict):       The STA's long term memory
+        timeout (int):       The time taken before responding to subsequent beacons
+        saved (Set):         The set of all AP SSIDs and keys saved by the STA
+        uid (int):           The STA's unique identifier in the simulation
+    """
+
+    def refresh(self):
+        """ Refreshes a STA's `r_addr` and `key` to new values
+        """
+        self.r_addr = self.get_addr()
+        self.key = get_key()
+        assert self.key.can_encrypt()
+        assert self.key.has_private()
+        assert self.key.can_sign()
+
+    def send_secure_probe_request(self, beacon: Frame) -> Frame:
+        """ Returns a SecureScan Probe Response frame given a Beacon
+
+        Args:
+            beacon (Frame): The SecureScan Beacon frame to respond to
+
+        Returns:
+            Frame: The SecureScan Probe Request frame sent in response
+        """
+        if beacon.source in self.memory:
+            if time.time() - self.memory[beacon.source]['time'] < 1:
+                return None
+        time.sleep(random.randint(1, 100) / 1000)
+        self.refresh()
+        ap_pk = RSA.importKey(beacon.contents)
+        next_rmac = self.get_addr()
+        self.memory[beacon.source] = {
+            'ap_pk': ap_pk,
+            'st_sk': self.key,
+            'time': time.time(),
+            'next_rmac': next_rmac
+        }
+        msg = bytes(json.dumps({
+            "st_pk": str(self.key.publickey().exportKey()),
+            "next_rmac": next_rmac
+        }), 'utf-8')
+        p_text = fragment(msg, 80)
+        c_text = [ap_pk.encrypt(i, 32) for i in p_text]
+        return Frame(FrameType['ProbeRequest'], self.r_addr, "*", c_text)
+
+    def verify_secure_probe_response(self, response: Frame) -> bool:
+        """ Determines a SecureScan Probe Response frame's validity
+
+        Args:
+            response (Frame): The SecureScan Probe Response to validate
+
+        Returns:
+            bool: True if the `response` was valid, False otherwise
+        """
+        if response.source not in self.memory:
+            return False
+        if time.time() - self.memory[response.source]['time'] > self.timeout:
+            return False
+        ap_pk = self.memory[response.source]['ap_pk']
+        st_sk = self.memory[response.source]['st_sk']
+        next_rmac = self.memory[response.source]['next_rmac']
+        self.memory.pop(response.source)
+        msg = [st_sk.decrypt(i) for i in response.contents]
+        p_text = json.loads(bytes([b for s in msg for b in s]).decode('utf-8'))
+        signature = (int(p_text['signature']), None)
+        challenge = SHA256.new(st_sk.publickey().exportKey()).digest()
+        if (p_text['ssid'], ap_pk.exportKey()) not in self.saved:
+            return False
+        if not ap_pk.verify(challenge, signature):
+            return False
+        self.get_addr = next_rmac
+        return True
+
+    def __init__(self, get_addr: Callable = get_mac(), timeout: int = 1):
+        self.get_addr = get_addr
+        self.get_addr = self.get_addr()
+        self.r_addr = self.get_addr
+        self.timeout = timeout
+        self.memory = {}
+        self.saved = set()
+        self.refresh()
+
+    def __str__(self):
+        return "Station: \t\n" \
+        "Global MAC address: \t{}\n" \
+        "Random MAC address: \t{}\n" \
+        "Public key: \n{}\n" \
+        "Private key: \n{}" \
+        "".format(self.get_addr, self.r_addr,
+                  self.key.publickey().exportKey().decode('utf-8'),
+                  self.key.exportKey().decode('utf-8'))
