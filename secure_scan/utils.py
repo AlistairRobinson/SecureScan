@@ -5,7 +5,7 @@ from string import ascii_lowercase
 from binascii import b2a_hex
 from Crypto import Random
 from Crypto.PublicKey import RSA
-from Crypto.PublicKey.RSA import _RSAobj
+from Crypto.PublicKey.RSA import RsaKey
 
 def get_mac() -> str:
     """ Returns a random hexadecimal string of length 12
@@ -18,11 +18,11 @@ def get_mac() -> str:
     """
     return b2a_hex(urandom(6)).decode('utf-8')
 
-def get_key() -> _RSAobj:
+def get_key() -> RsaKey:
     """ Returns a randomly generated RSA key of size 1024 bits
 
     Returns:
-        _RSAobj: The key generated
+        RsaKey: The key generated
     """
     return RSA.generate(1024, Random.new().read)
 

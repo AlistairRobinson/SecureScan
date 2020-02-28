@@ -8,7 +8,9 @@ from typing import List
 from Crypto import Random
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
-from Crypto.PublicKey.RSA import _RSAobj
+from Crypto.PublicKey.RSA import RsaKey
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Signature import pkcs1_15
 from simulation.frames import Frame, FrameType
 
 def get_hex(i: int) -> str:
@@ -22,11 +24,11 @@ def get_hex(i: int) -> str:
     """
     return b2a_hex(urandom(i//2)).decode('utf-8')
 
-def get_key() -> _RSAobj:
+def get_key() -> RsaKey:
     """ Returns a randomly generated RSA key of size 1024 bits
 
     Returns:
-        _RSAobj: The key generated
+        RsaKey: The key generated
     """
     return RSA.generate(1024, Random.new().read)
 
@@ -56,7 +58,7 @@ class AccessPoint:
     Attributes:
         ssid (str):     The AP's SSID, or human readable identifier
         mac_addr (str): The AP's global MAC address for sending data frames
-        key (_RSAobj):  The AP's key object for asymmetric encryption
+        key (RsaKey):   The AP's key object for asymmetric encryption
         memory (Dict):  The AP's long term memory
         uid (int):      The AP's unique identifier in the simulation
     """
@@ -103,17 +105,17 @@ class AccessPoint:
         Returns:
             Frame: The SecureScan Probe Response frame sent in response
         """
-        msg = [self.key.decrypt(i) for i in request.contents]
+        msg = [PKCS1_OAEP.new(self.key).decrypt(i) for i in request.contents]
         p_text = json.loads(bytes([b for s in msg for b in s]).decode('utf-8'))
         st_pk_exp = p_text['st_pk'][2:-1].replace('\\n', '\n').encode('utf-8')
         st_pk = RSA.importKey(st_pk_exp)
         self.memory[p_text['next_rmac']] = time.time()
-        signature = str(self.key.sign(SHA256.new(st_pk_exp).digest(), 32)[0])
-        message = bytes(json.dumps({
+        s = pkcs1_15.new(self.key).sign(SHA256.new(st_pk_exp))
+        m = bytes(json.dumps({
             "ssid": self.ssid,
-            "signature": signature
+            "signature": s.hex()
         }), 'utf-8')
-        c_text = [st_pk.encrypt(i, 32) for i in fragment(message, 80)]
+        c_text = [PKCS1_OAEP.new(st_pk).encrypt(i) for i in fragment(m, 80)]
         return Frame(FrameType['ProbeResponse'], self.mac_addr,
                      "*", self.uid, c_text)
 
@@ -142,7 +144,7 @@ class Station:
     Attributes:
         mac_addr (str):  The STA's global MAC address for sending data frames
         rmac_addr (str): The STA's random MAC address for sending data frames
-        key (_RSAobj):   The STA's key object for asymmetric encryption
+        key (RsaKey):   The STA's key object for asymmetric encryption
         memory (Dict):   The STA's long term memory
         saved (Set):     The set of all AP SSIDs and keys saved by the STA
         uid (int):       The STA's unique identifier in the simulation
@@ -200,7 +202,7 @@ class Station:
             "next_rmac": next_rmac
         }), 'utf-8')
         p_text = fragment(msg, 80)
-        c_text = [ap_pk.encrypt(i, 32) for i in p_text]
+        c_text = [PKCS1_OAEP.new(ap_pk).encrypt(i) for i in p_text]
         return Frame(FrameType['ProbeRequest'], self.rmac_addr,
                      "*", self.uid, c_text)
 
@@ -221,13 +223,15 @@ class Station:
         st_sk = self.memory[response.source]['st_sk']
         next_rmac = self.memory[response.source]['next_rmac']
         self.memory.pop(response.source)
-        msg = [st_sk.decrypt(i) for i in response.contents]
+        msg = [PKCS1_OAEP.new(st_sk).decrypt(i) for i in response.contents]
         p_text = json.loads(bytes([b for s in msg for b in s]).decode('utf-8'))
-        signature = (int(p_text['signature']), None)
-        challenge = SHA256.new(st_sk.publickey().exportKey()).digest()
+        signature = bytes.fromhex(p_text['signature'])
+        challenge = SHA256.new(st_sk.publickey().exportKey())
         if (p_text['ssid'], ap_pk.exportKey()) not in self.saved:
             return False
-        if not ap_pk.verify(challenge, signature):
+        try:
+            pkcs1_15.new(ap_pk).verify(challenge, signature)
+        except ValueError:
             return False
         self.mac_addr = next_rmac
         return True
