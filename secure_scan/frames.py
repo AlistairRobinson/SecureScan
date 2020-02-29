@@ -16,7 +16,6 @@ class Frame:
         type (FrameType):   The Frame's type (see FrameType)
         source (str):       The Frame's source MAC address
         destination (str):  The Frame's destination MAC address
-        uid (int):          The Frame's unique identifier in the simulation
         contents:           The Frame's contents or payload
     """
 

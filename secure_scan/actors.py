@@ -19,7 +19,6 @@ class AccessPoint:
         addr (str):          The AP's global MAC address for sending frames
         key (RsaKey):        The AP's key object for asymmetric encryption
         memory (Dict):       The AP's long term memory
-        uid (int):           The AP's unique identifier in the simulation
     """
 
     def __init__(self, ssid: str = None, get_addr: Callable = get_mac):
@@ -83,7 +82,6 @@ class Station:
         timeout (int):       The time taken before ignoring repeated beacons
         maxsleep (int):      The maximum delay used to avoid fingerprinting
         saved (Set):         The set of all AP SSIDs and keys saved by the STA
-        uid (int):           The STA's unique identifier in the simulation
     """
 
     def __init__(self, get_addr: Callable = get_mac, timeout: int = 1, maxsleep: int = 100):
