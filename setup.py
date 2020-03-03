@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="SecureScan",
-    version="1.0",
+    version="1.0.1",
     author="Alistair Robinson",
     description="A private, secure service discovery protocol package",
     long_description=long_description,
