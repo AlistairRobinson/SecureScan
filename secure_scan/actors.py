@@ -84,7 +84,8 @@ class Station:
         saved (Set):         The set of all AP SSIDs and keys saved by the STA
     """
 
-    def __init__(self, get_addr: Callable = get_mac, timeout: int = 1, maxsleep: int = 100):
+    def __init__(self, get_addr: Callable = get_mac,
+                 timeout: int = 1, maxsleep: int = 100):
         self.get_addr = get_addr
         self.addr = self.get_addr()
         self.r_addr = self.get_addr
@@ -104,10 +105,31 @@ class Station:
         assert self.key.can_sign()
 
     def save_ap(self, ap: AccessPoint):
+        """ Saves an Access Point to the station's memory
+
+        Args:
+            ap (AccessPoint): The AccessPoint to save
+        """
         self.saved.add((ap.ssid, ap.key.publickey().exportKey()))
 
     def save_ssid_pk(self, ssid: str, ap_pk: RsaKey):
+        """ Saves an SSID/public key pair to the station's memory
+
+        Args:
+            ssid (str):     The SSID to save
+            ap_pk (RsaKey): The public key associated with the ssid
+        """
         self.saved.add((ssid, ap_pk.exportKey()))
+
+    def clear_memory(self):
+        """ Clears a Station's short term connection memory
+        """
+        self.memory = {}
+
+    def clear_saved(self):
+        """ Clears a Station's long term saved AP list
+        """
+        self.saved = set()
 
     def send_probe_request(self, beacon: Frame) -> Frame:
         """ Returns a SecureScan Probe Response frame given a Beacon
