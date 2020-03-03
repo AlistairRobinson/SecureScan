@@ -5,7 +5,6 @@ from binascii import b2a_hex
 from os import urandom
 from string import ascii_lowercase
 from typing import List
-from Crypto import Random
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.PublicKey.RSA import RsaKey
@@ -30,7 +29,7 @@ def get_key() -> RsaKey:
     Returns:
         RsaKey: The key generated
     """
-    return RSA.generate(1024, Random.new().read)
+    return RSA.generate(1024)
 
 def get_ssid() -> str:
     """ Returns a randomly generated SSID name
