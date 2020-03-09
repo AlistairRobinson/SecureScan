@@ -1,4 +1,4 @@
-import pytest, time
+import pytest, time, random
 from secure_scan.actors import Station, AccessPoint
 
 def test_station_constructor():
@@ -43,6 +43,22 @@ def test_valid_saved_probe_response():
     success, ssid, ap_pk = st.verify_probe_response(probe_response)
     assert ssid is not None and ap_pk is not None
     assert success
+
+def test_crowded_network():
+    aps = [AccessPoint() for _ in range(5)]
+    stations = [Station() for _ in range(5)]
+    assert all([not st.connected for st in stations])
+    for ap in aps:
+        beacon = ap.send_beacon()
+        for st in stations:
+            st.save_ap(ap)
+            probe_request = st.send_probe_request(beacon)
+            probe_response = ap.send_probe_response(probe_request)
+            success, ssid, ap_pk = st.verify_probe_response(probe_response)
+            assert ssid == ap.ssid
+            assert ap_pk.export_key() == ap.key.publickey().export_key()
+            assert success
+    assert all([st.connected for st in stations])
 
 def test_karma():
     adversary = AccessPoint()

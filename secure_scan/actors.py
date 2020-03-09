@@ -82,6 +82,7 @@ class Station:
         timeout (int):       The time taken before ignoring repeated beacons
         maxsleep (int):      The maximum delay used to avoid fingerprinting
         saved (Set):         The set of all AP SSIDs and keys saved by the STA
+        connected (bool):    The status of the STA
     """
 
     def __init__(self, get_addr: Callable = get_mac,
@@ -93,11 +94,13 @@ class Station:
         self.maxsleep = maxsleep
         self.memory = {}
         self.saved = set()
+        self.connected = False
         self.refresh()
 
     def refresh(self):
         """ Refreshes a STA's `r_addr` and `key` to new values
         """
+        print(self.get_addr)
         self.r_addr = self.get_addr()
         self.key = get_key()
         assert self.key.can_encrypt()
@@ -193,7 +196,8 @@ class Station:
         if (p_text['ssid'], ap_pk.exportKey()) not in self.saved:
             return False, p_text['ssid'], ap_pk
         pkcs1_15.new(ap_pk).verify(challenge, signature)
-        self.get_addr = next_rmac
+        self.r_mac = next_rmac
+        self.connected = True
         return True, p_text['ssid'], ap_pk
 
     def __str__(self):
