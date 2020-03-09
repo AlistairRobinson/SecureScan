@@ -137,12 +137,15 @@ class Station:
         Args:
             beacon (Frame): The SecureScan Beacon frame to respond to
 
+        Raises:
+            ValueError: If the AP sent a beacon before timeout
+
         Returns:
             Frame: The SecureScan Probe Request frame sent in response
         """
         if beacon.source in self.memory:
-            if time.time() - self.memory[beacon.source]['time'] < 1:
-                return None
+            if time.time() - self.memory[beacon.source]['time'] < self.timeout:
+                raise ValueError("Beacon already received before timeout")
         time.sleep(random.randint(1, self.maxsleep) / 1000)
         self.refresh()
         ap_pk = RSA.importKey(beacon.contents)
