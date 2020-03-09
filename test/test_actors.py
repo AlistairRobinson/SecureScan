@@ -1,3 +1,4 @@
+import pytest, time
 from secure_scan.actors import Station, AccessPoint
 
 def test_station_constructor():
@@ -50,11 +51,9 @@ def test_karma():
     st.save_ap(ap)
     beacon = ap.send_beacon()
     probe_request = st.send_probe_request(beacon)
-    try:
+    with pytest.raises(ValueError):
         probe_response = adversary.send_probe_response(probe_request)
-        assert not st.verify_probe_response(probe_response)
-    except ValueError:
-        pass
+        _, _, _ = st.verify_probe_response(probe_response)
 
 def test_reverse_karma():
     ap = AccessPoint()
@@ -63,3 +62,34 @@ def test_reverse_karma():
     beacon = ap.send_beacon()
     probe_request = st.send_probe_request(beacon)
     assert not ap.ssid in str(probe_request.contents)
+
+def test_beacon_spam():
+    ap = AccessPoint()
+    st = Station()
+    beacon = ap.send_beacon()
+    _ = st.send_probe_request(beacon)
+    beacon = ap.send_beacon()
+    with pytest.raises(ValueError):
+        _ = st.send_probe_request(beacon)
+
+def test_probe_response_spam():
+    ap = AccessPoint()
+    st = Station()
+    st.save_ap(ap)
+    beacon = ap.send_beacon()
+    probe_request = st.send_probe_request(beacon)
+    probe_response = ap.send_probe_response(probe_request)
+    _, _, _ = st.verify_probe_response(probe_response)
+    with pytest.raises(ValueError):
+        _, _, _ = st.verify_probe_response(probe_response)
+
+def test_probe_response_timeout():
+    ap = AccessPoint()
+    st = Station()
+    st.save_ap(ap)
+    beacon = ap.send_beacon()
+    probe_request = st.send_probe_request(beacon)
+    probe_response = ap.send_probe_response(probe_request)
+    time.sleep(1)
+    with pytest.raises(ValueError):
+        _, _, _ = st.verify_probe_response(probe_response)
