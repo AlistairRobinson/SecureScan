@@ -12,30 +12,36 @@ def test_ap_constructor():
 
 def test_beacon():
     ap = AccessPoint()
-    _ = ap.send_beacon()
+    beacon = ap.send_beacon()
+    assert beacon is not None
 
 def test_probe_request():
     ap = AccessPoint()
     st = Station()
     beacon = ap.send_beacon()
-    _ = st.send_probe_request(beacon)
+    probe_request = st.send_probe_request(beacon)
+    assert probe_request is not None
 
-def test_invalid_probe_response():
+def test_valid_unsaved_probe_response():
     ap = AccessPoint()
     st = Station()
     beacon = ap.send_beacon()
     probe_request = st.send_probe_request(beacon)
     probe_response = ap.send_probe_response(probe_request)
-    assert not st.verify_probe_response(probe_response)
+    success, ssid, ap_pk = st.verify_probe_response(probe_response)
+    assert ssid is not None and ap_pk is not None
+    assert not success
 
-def test_valid_probe_response():
+def test_valid_saved_probe_response():
     ap = AccessPoint()
     st = Station()
     st.save_ap(ap)
     beacon = ap.send_beacon()
     probe_request = st.send_probe_request(beacon)
     probe_response = ap.send_probe_response(probe_request)
-    assert st.verify_probe_response(probe_response)
+    success, ssid, ap_pk = st.verify_probe_response(probe_response)
+    assert ssid is not None and ap_pk is not None
+    assert success
 
 def test_karma():
     adversary = AccessPoint()
@@ -48,7 +54,7 @@ def test_karma():
         probe_response = adversary.send_probe_response(probe_request)
         assert not st.verify_probe_response(probe_response)
     except ValueError:
-        return True
+        pass
 
 def test_reverse_karma():
     ap = AccessPoint()

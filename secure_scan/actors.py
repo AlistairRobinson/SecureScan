@@ -1,7 +1,7 @@
 import json
 import time
 import random
-from typing import Callable
+from typing import Callable, Tuple
 from Crypto.Hash import SHA256
 from Crypto.PublicKey import RSA
 from Crypto.PublicKey.RSA import RsaKey
@@ -161,19 +161,24 @@ class Station:
         c_text = [PKCS1_OAEP.new(ap_pk).encrypt(i) for i in p_text]
         return Frame(FrameType['ProbeRequest'], self.r_addr, "*", c_text)
 
-    def verify_probe_response(self, response: Frame) -> bool:
+    def verify_probe_response(self, response: Frame) -> Tuple[bool, str, RsaKey]:
         """ Determines a SecureScan Probe Response frame's validity
 
         Args:
             response (Frame): The SecureScan Probe Response to validate
 
+        Raises:
+            ValueError: If the `response` is invalid
+
         Returns:
-            bool: True if the `response` was valid, False otherwise
+            bool:   True if the handshake was successful, False otherwise
+            str:    The SSID of the AP
+            RsaKey: The public key of the AP
         """
         if response.source not in self.memory:
-            return False
+            raise ValueError("Probe Response source not in memory")
         if time.time() - self.memory[response.source]['time'] > self.timeout:
-            return False
+            raise ValueError("Probe Response timed out")
         ap_pk = self.memory[response.source]['ap_pk']
         st_sk = self.memory[response.source]['st_sk']
         next_rmac = self.memory[response.source]['next_rmac']
@@ -183,13 +188,10 @@ class Station:
         signature = bytes.fromhex(p_text['signature'])
         challenge = SHA256.new(st_sk.publickey().exportKey())
         if (p_text['ssid'], ap_pk.exportKey()) not in self.saved:
-            return False
-        try:
-            pkcs1_15.new(ap_pk).verify(challenge, signature)
-        except ValueError:
-            return False
+            return False, p_text['ssid'], ap_pk
+        pkcs1_15.new(ap_pk).verify(challenge, signature)
         self.get_addr = next_rmac
-        return True
+        return True, p_text['ssid'], ap_pk
 
     def __str__(self):
         return "Station: \t\n" \
