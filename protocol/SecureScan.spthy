@@ -134,48 +134,48 @@ rule Access_Point:
     [ Out( aenc(sign(message, ~AP_SK), message) ) ]
 
 /*  Station_Key_Secrecy
-    A lemma which enforces that an adversary cannot know the secret key `k` of
-    a station `S` without explicitly performing an `SKReveal` action fact
+    A lemma which enforces that an adversary cannot know the secret key of a
+    station `STA` without explicitly performing an `SKReveal` action fact on `AP`
 */
 lemma Station_Key_Secrecy:
   "
-    not(                                // it is not possible
-      Ex S k #i #j #k.                  // for any station `S` and a key `k`
-        Handshake(S, k) @ #i            // to perform a successful handshake
-        & K(k) @ #j                     // where the adversary knows `k`
-        & Signature(S, k, true) @ #k    // and the signature provided was valid
-        & not(Ex #r. SKReveal(S) @ r)   // where the adversary did not "cheat"
+    not(                                 // it is not possible
+      Ex AP STA #i #j #k.                // for any station `STA` and AP `AP`
+        Handshake(AP, STA) @ #i          // to perform a successful handshake
+        & K(STA) @ #j                    // where the adversary knows `STA`'s secret key
+        & Signature(AP, STA, true) @ #k  // and the signature provided was valid
+        & not(Ex #r. SKReveal(AP) @ r)   // where the adversary did not "cheat"
     )
   "
 
 /*  Station_Public_Key_Secrecy
-    A lemma which enforces that an adversary cannot know the secret key `k` of
-    a station `S` without explicitly performing an `SKReveal` action fact
+    A lemma which enforces that an adversary cannot know the public key of a
+    station `STA` without explicitly performing an `SKReveal` action fact on `AP`
 */
 lemma Station_Public_Key_Secrecy:
   "
-    not(                                // it is not possible
-      Ex S k #i #j #k.                  // for any station `S` and a key `k`
-        Handshake(S, k) @ #i            // to perform a successful handshake
-        & K(pk(k)) @ #j                 // where the adversary knows `k`
-        & Signature(S, k, true) @ #k    // and the signature provided was valid
-        & not(Ex #r. SKReveal(S) @ r)   // where the adversary did not "cheat"
+    not(                                 // it is not possible
+      Ex AP STA #i #j #k.                // for any station `STA` and AP `AP`
+        Handshake(AP, STA) @ #i          // to perform a successful handshake
+        & K(pk(STA)) @ #j                // where the adversary knows `STA`'s secret key
+        & Signature(AP, STA, true) @ #k  // and the signature provided was valid
+        & not(Ex #r. SKReveal(AP) @ r)   // where the adversary did not "cheat"
     )
   "
 
 /*  Station_Handshake_Validity
-    A lemma which enforces that a station `S` cannot perform a handshake with
-    an access point without having interacted with an honest access point,
+    A lemma which enforces that a station `STA` cannot perform a handshake with
+    an access point `AP` without having interacted with an honest access point,
     resulting in a probe response, or without having its secret key revealed
     before the handshake was performed
 */
 lemma Station_Handshake_Validity:
   "
-    ( All S k #i #j. Handshake(S, k) @ #i       // For all completed handshakes
-      & Signature(S, k, true) @ #j              // with valid signatures
-       ==>                                      // it follows that...
-       ( (Ex #a. ProbeResponse(S, pk(k)) @ a)   // a probe request must exist
-       | (Ex #r. SKReveal(S) @ r & r < i)       // or `k` was revealed first
+    ( All AP STA #i #j. Handshake(AP, STA) @ #i   // For all completed handshakes
+      & Signature(AP, STA, true) @ #j             // with valid signatures
+       ==>                                        // it follows that...
+       ( (Ex #a. ProbeResponse(AP, pk(STA)) @ a)  // a probe request must exist
+       | (Ex #r. SKReveal(AP) @ r & r < i)        // or `k` was revealed first
        )
     )
   "
@@ -187,14 +187,14 @@ lemma Station_Handshake_Validity:
 */
 lemma Station_Handshake_Injectivity:
   "
-    ( All S k #i #j. Handshake(S, k) @ #i       // For all completed handshakes
-      & Signature(S, k, true) @ #j              // with valid signatures
-       ==>                                      // it follows that...
-       ( (Ex #a. ProbeResponse(S, pk(k)) @ a    // a probe response must exist
-           & (All #j. Handshake(S, k) @ #j      // and no other probe request
-              ==> #i = #j)                      // uses the same key
+    ( All AP STA #i #j. Handshake(AP, STA) @ #i  // For all completed handshakes
+      & Signature(AP, STA, true) @ #j            // with valid signatures
+       ==>                                       // it follows that...
+       ( (Ex #a. ProbeResponse(AP, pk(STA)) @ a  // a probe response must exist
+           & (All #j. Handshake(AP, STA) @ #j    // and no other probe request
+              ==> #i = #j)                       // uses the same key
        )
-       | (Ex #r. SKReveal(S) @ r & r < i)       // or `k` was revealed first
+       | (Ex #r. SKReveal(AP) @ r & r < i)       // or `k` was revealed first
        )
     )
   "
@@ -205,12 +205,12 @@ lemma Station_Handshake_Injectivity:
     a handshake with an access point without having its secret key revealed
 */
 lemma Station_Access:
-  exists-trace                          // the protocol must facilitate
-  " Ex S k #i #j #k.                    // for any station and key
-        Handshake(S, k) @ #i            // a successful handshake for `S`
-        & ProbeResponse(S, pk(k)) @ #j  // with a valid probe response
-        & Signature(S, k, true) @ #k    // and a valid signature
-      & not(Ex #r. SKReveal(S) @ r)     // where `k` was not revealed
+  exists-trace                             // the protocol must facilitate
+  " Ex AP STA #i #j #k.                    // for any station and key
+        Handshake(AP, STA) @ #i            // a successful handshake for `S`
+        & ProbeResponse(AP, pk(STA)) @ #j  // with a valid probe response
+        & Signature(AP, STA, true) @ #k    // and a valid signature
+      & not(Ex #r. SKReveal(AP) @ r)       // where `k` was not revealed
   "
 
 end

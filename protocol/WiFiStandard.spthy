@@ -129,22 +129,22 @@ rule Access_Point:
 */
 lemma Station_Privacy:
   "
-    not(                        // it is not possible
-      Ex S k #i #j.             // for any station `S` and a public key `k`
-        Handshake(S, k) @ #i    // to perform a successful handshake
-        & K(k) @ #j             // where the adversary knows `k`
+    not(                         // it is not possible
+      Ex AP STA #i #j.           // for any station `STA` and AP `AP`
+        Handshake(AP, STA) @ #i  // to perform a successful handshake
+        & K(STA) @ #j            // where the adversary knows `STA`'s identity
     )
   "
 
 /*  Station_Handshake
-    A lemma which enforces that a station `S` cannot perform a handshake with
+    A lemma which enforces that a station `STA` cannot perform a handshake with
     an access point without having interacted with an honest access point,
     resulting in a probe response
 */
 lemma Station_Handshake:
   "
-    ( All S k #i. Handshake(S, k) @ #i       // For all completed handshakes
-       ==> (Ex #a. ProbeResponse(S, k) @ a)  // a probe request must exist
+    ( All AP STA #i. Handshake(AP, STA) @ #i    // For all completed handshakes
+       ==> (Ex #a. ProbeResponse(AP, STA) @ a)  // a valid probe request must exist
     )
   "
 
@@ -154,10 +154,10 @@ lemma Station_Handshake:
     a handshake with an access point with a valid probe response
 */
 lemma Station_Access:
-  exists-trace                          // the protocol must facilitate
-  " Ex S k #i #j.                       // for any station and key
-        Handshake(S, k) @ #i            // a successful handshake for `S`
-        & ProbeResponse(S, k) @ #j      // with a valid probe response
+  exists-trace                             // the protocol must facilitate
+  " Ex AP STA #i #j.                       // for any station and key
+        Handshake(AP, STA) @ #i            // a successful handshake for `S`
+        & ProbeResponse(AP, STA) @ #j      // with a valid probe response
   "
 
 end
